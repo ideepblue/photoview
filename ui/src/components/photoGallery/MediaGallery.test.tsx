@@ -90,13 +90,43 @@ describe('photo gallery presenting', () => {
 
   test('presenting', () => {
     const mediaStatePresent: MediaGalleryState = {
-      activeIndex: 0,
+      activeIndex: 1,
       media: [
         {
-          id: '165',
+          id: 'previous',
           type: MediaType.Photo,
           thumbnail: {
-            url: '/photo/thumbnail_3666760020_jpg_x76GG5pS.jpg',
+            url: '/previous.jpg',
+            width: 768,
+            height: 1024,
+            __typename: 'MediaURL',
+          },
+          highRes: null,
+          videoWeb: null,
+          blurhash: null,
+          favorite: false,
+          __typename: 'Media',
+        },
+        {
+          id: 'current',
+          type: MediaType.Photo,
+          thumbnail: {
+            url: '/current.jpg',
+            width: 768,
+            height: 1024,
+            __typename: 'MediaURL',
+          },
+          highRes: null,
+          videoWeb: null,
+          blurhash: null,
+          favorite: false,
+          __typename: 'Media',
+        },
+        {
+          id: 'next',
+          type: MediaType.Photo,
+          thumbnail: {
+            url: '/next.jpg',
             width: 768,
             height: 1024,
             __typename: 'MediaURL',
@@ -120,5 +150,10 @@ describe('photo gallery presenting', () => {
     )
 
     expect(screen.getByTestId('present-overlay')).toBeInTheDocument()
+    expect(
+      screen
+        .getByTestId('present-swipe-current')
+        .querySelector('[data-testid="present-img-thumbnail"]')
+    ).toHaveAttribute('src', 'http://localhost:3000/current.jpg')
   })
 })

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import styled, { createGlobalStyle } from 'styled-components'
 import PresentNavigationOverlay from './PresentNavigationOverlay'
-import PresentMedia from './PresentMedia'
+import PresentSwipeTrack from './PresentSwipeTrack'
 import { closePresentModeAction, GalleryAction } from '../mediaGalleryReducer'
 import { MediaGalleryFields } from '../__generated__/MediaGalleryFields'
 
@@ -25,7 +25,8 @@ const PreventScroll = createGlobalStyle`
 type PresentViewProps = {
   className?: string
   imageLoaded?(): void
-  activeMedia: MediaGalleryFields
+  media: MediaGalleryFields[]
+  activeIndex: number
   dispatchMedia: React.Dispatch<GalleryAction>
   disableSaveCloseInHistory?: boolean
 }
@@ -33,7 +34,8 @@ type PresentViewProps = {
 const PresentView = ({
   className,
   imageLoaded,
-  activeMedia,
+  media,
+  activeIndex,
   dispatchMedia,
   disableSaveCloseInHistory,
 }: PresentViewProps) => {
@@ -74,7 +76,13 @@ const PresentView = ({
         dispatchMedia={dispatchMedia}
         disableSaveCloseInHistory
       >
-        <PresentMedia media={activeMedia} imageLoaded={imageLoaded} />
+        <PresentSwipeTrack
+          currentMedia={media[activeIndex]}
+          previousMedia={media[(activeIndex - 1 + media.length) % media.length]}
+          nextMedia={media[(activeIndex + 1) % media.length]}
+          imageLoaded={imageLoaded}
+          onNavigate={type => dispatchMedia({ type })}
+        />
       </PresentNavigationOverlay>
     </StyledContainer>
   )
