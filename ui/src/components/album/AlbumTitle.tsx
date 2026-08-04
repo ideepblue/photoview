@@ -96,7 +96,7 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
   }
 
   return (
-    <div className="flex mb-6 items-end h-14">
+    <div className="flex mb-6 items-end min-h-[3.5rem]">
       <div className="min-w-0">
         <nav aria-label="Album breadcrumb">
           <BreadcrumbList>{breadcrumbSections}</BreadcrumbList>
