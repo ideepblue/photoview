@@ -1,11 +1,5 @@
 import React from 'react'
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  within,
-} from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { MediaType } from '../../../__generated__/globalTypes'
 import { MediaGalleryFields } from '../__generated__/MediaGalleryFields'
 import PresentSwipeTrack from './PresentSwipeTrack'
@@ -78,13 +72,19 @@ const setReducedMotion = (matches: boolean) => {
   })
 }
 
-const renderTrack = () => {
+const renderTrack = ({
+  nextMedia = media.next,
+  previousMedia = media.previous,
+}: {
+  nextMedia?: MediaGalleryFields | null
+  previousMedia?: MediaGalleryFields | null
+} = {}) => {
   const onNavigate = vi.fn()
   render(
     <PresentSwipeTrack
       currentMedia={media.current}
-      nextMedia={media.next}
-      previousMedia={media.previous}
+      nextMedia={nextMedia}
+      previousMedia={previousMedia}
       onNavigate={onNavigate}
     />
   )
@@ -172,9 +172,7 @@ test.each([
   )
   const target = screen.getByTestId('present-swipe-target')
   expect(target).toHaveStyle(`transform: ${testCase.targetTransform}`)
-  expect(
-    within(target).getByTestId('present-img-thumbnail')
-  ).toHaveAttribute(
+  expect(within(target).getByTestId('present-img-thumbnail')).toHaveAttribute(
     'src',
     `http://localhost:3000/${testCase.targetId}-thumbnail.jpg`
   )
@@ -190,7 +188,9 @@ test.each([
   )
   expect(onNavigate).not.toHaveBeenCalled()
 
-  act(() => vi.advanceTimersByTime(220))
+  act(() => {
+    vi.advanceTimersByTime(220)
+  })
   expect(onNavigate).toHaveBeenCalledTimes(1)
   expect(onNavigate).toHaveBeenCalledWith(testCase.navigation)
 })
@@ -218,7 +218,9 @@ test('short drag rebounds without navigation', () => {
   expect(screen.getByTestId('present-swipe-current')).toHaveStyle(
     'transform: translate3d(0px, 0px, 0)'
   )
-  act(() => vi.advanceTimersByTime(180))
+  act(() => {
+    vi.advanceTimersByTime(180)
+  })
   expect(onNavigate).not.toHaveBeenCalled()
   expect(screen.queryByTestId('present-swipe-target')).not.toBeInTheDocument()
 })
@@ -259,7 +261,9 @@ test('pointer cancellation rebounds without navigation', () => {
   })
   fireEvent.pointerCancel(track, { pointerId: 1 })
 
-  act(() => vi.advanceTimersByTime(180))
+  act(() => {
+    vi.advanceTimersByTime(180)
+  })
   expect(onNavigate).not.toHaveBeenCalled()
   expect(screen.queryByTestId('present-swipe-target')).not.toBeInTheDocument()
 })
@@ -301,7 +305,9 @@ test('ignores new gestures while the committed animation is settling', () => {
     clientY: 400,
   })
 
-  act(() => vi.advanceTimersByTime(220))
+  act(() => {
+    vi.advanceTimersByTime(220)
+  })
   expect(onNavigate).toHaveBeenCalledTimes(1)
   expect(onNavigate).toHaveBeenCalledWith('nextImage')
 })
@@ -328,4 +334,28 @@ test('reduced motion commits without a settle delay', () => {
   })
 
   expect(onNavigate).toHaveBeenCalledWith('nextImage')
+})
+
+test('does not navigate past a non-circular boundary', () => {
+  const { onNavigate, track } = renderTrack({ nextMedia: null })
+
+  fireEvent.pointerDown(track, {
+    pointerId: 1,
+    button: 0,
+    clientX: 200,
+    clientY: 500,
+  })
+  fireEvent.pointerMove(track, {
+    pointerId: 1,
+    clientX: 200,
+    clientY: 200,
+  })
+  fireEvent.pointerUp(track, {
+    pointerId: 1,
+    clientX: 200,
+    clientY: 200,
+  })
+
+  expect(screen.queryByTestId('present-swipe-target')).not.toBeInTheDocument()
+  expect(onNavigate).not.toHaveBeenCalled()
 })

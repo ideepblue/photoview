@@ -108,9 +108,10 @@ test('passes the next item into the animated track before dispatching', () => {
   })
 
   const target = screen.getByTestId('present-swipe-target')
-  expect(
-    within(target).getByTestId('present-img-thumbnail')
-  ).toHaveAttribute('src', 'http://localhost:3000/next.jpg')
+  expect(within(target).getByTestId('present-img-thumbnail')).toHaveAttribute(
+    'src',
+    'http://localhost:3000/next.jpg'
+  )
   expect(dispatchMedia).not.toHaveBeenCalled()
 
   fireEvent.pointerUp(track, {
@@ -118,7 +119,9 @@ test('passes the next item into the animated track before dispatching', () => {
     clientX: 200,
     clientY: 300,
   })
-  act(() => vi.advanceTimersByTime(220))
+  act(() => {
+    vi.advanceTimersByTime(220)
+  })
 
   expect(dispatchMedia).toHaveBeenCalledWith({ type: 'nextImage' })
 })

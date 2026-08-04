@@ -165,6 +165,15 @@ const TimelineGallery = () => {
       dispatchMedia={dispatchMedia}
     />
   ))
+  const presentationMedia = mediaState.timelineGroups.flatMap(group =>
+    group.albums.flatMap(album => album.media)
+  )
+  const activePresentationMedia = getActiveTimelineMedia({ mediaState })
+  const presentationActiveIndex = activePresentationMedia
+    ? presentationMedia.findIndex(
+        media => media.id === activePresentationMedia.id
+      )
+    : -1
 
   return (
     <div className="overflow-x-hidden">
@@ -181,9 +190,11 @@ const TimelineGallery = () => {
         active={!finishedLoadingMore && !loading}
         text={t('general.loading.paginate.media', 'Loading more media')}
       />
-      {mediaState.presenting && (
+      {mediaState.presenting && presentationActiveIndex >= 0 && (
         <PresentView
-          activeMedia={getActiveTimelineMedia({ mediaState })!}
+          media={presentationMedia}
+          activeIndex={presentationActiveIndex}
+          circular={false}
           dispatchMedia={dispatchMedia}
         />
       )}

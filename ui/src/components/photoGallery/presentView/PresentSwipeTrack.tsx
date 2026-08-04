@@ -6,8 +6,7 @@ import React, {
   useState,
 } from 'react'
 import styled from 'styled-components'
-import { MediaGalleryFields } from '../__generated__/MediaGalleryFields'
-import PresentMedia from './PresentMedia'
+import PresentMedia, { PresentMediaFields } from './PresentMedia'
 import {
   completionOffset,
   getLayerTranslations,
@@ -57,9 +56,9 @@ type PointerSession = {
 }
 
 type PresentSwipeTrackProps = {
-  currentMedia: MediaGalleryFields
-  nextMedia: MediaGalleryFields
-  previousMedia: MediaGalleryFields
+  currentMedia: PresentMediaFields
+  nextMedia: PresentMediaFields | null
+  previousMedia: PresentMediaFields | null
   onNavigate(navigation: SwipeNavigation): void
   imageLoaded?(): void
 }
@@ -203,10 +202,15 @@ const PresentSwipeTrack = ({
     if (axis === null) return
 
     const offset = axis === 'x' ? delta.x : delta.y
+    const requestedTarget = navigationForOffset(offset)
+    const targetAvailable =
+      (requestedTarget === 'nextImage' && nextMedia !== null) ||
+      (requestedTarget === 'previousImage' && previousMedia !== null)
+
     updateMotion({
       axis,
-      offset,
-      target: navigationForOffset(offset),
+      offset: targetAvailable ? offset : 0,
+      target: targetAvailable ? requestedTarget : null,
       duration: 0,
       settling: false,
     })
@@ -244,9 +248,7 @@ const PresentSwipeTrack = ({
 
     updateMotion({
       ...activeMotion,
-      offset: commit
-        ? completionOffset(activeMotion.target, viewportSize)
-        : 0,
+      offset: commit ? completionOffset(activeMotion.target, viewportSize) : 0,
       duration,
       settling: true,
     })

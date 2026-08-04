@@ -3,7 +3,7 @@ import styled, { createGlobalStyle } from 'styled-components'
 import PresentNavigationOverlay from './PresentNavigationOverlay'
 import PresentSwipeTrack from './PresentSwipeTrack'
 import { closePresentModeAction, GalleryAction } from '../mediaGalleryReducer'
-import { MediaGalleryFields } from '../__generated__/MediaGalleryFields'
+import { PresentMediaFields } from './PresentMedia'
 
 const StyledContainer = styled.div`
   position: fixed;
@@ -25,8 +25,9 @@ const PreventScroll = createGlobalStyle`
 type PresentViewProps = {
   className?: string
   imageLoaded?(): void
-  media: MediaGalleryFields[]
+  media: PresentMediaFields[]
   activeIndex: number
+  circular?: boolean
   dispatchMedia: React.Dispatch<GalleryAction>
   disableSaveCloseInHistory?: boolean
 }
@@ -36,6 +37,7 @@ const PresentView = ({
   imageLoaded,
   media,
   activeIndex,
+  circular = true,
   dispatchMedia,
   disableSaveCloseInHistory,
 }: PresentViewProps) => {
@@ -69,6 +71,22 @@ const PresentView = ({
     }
   })
 
+  const currentMedia = media[activeIndex]
+  if (currentMedia === undefined) return null
+
+  const previousMedia =
+    activeIndex > 0
+      ? media[activeIndex - 1]
+      : circular
+      ? media[media.length - 1]
+      : null
+  const nextMedia =
+    activeIndex < media.length - 1
+      ? media[activeIndex + 1]
+      : circular
+      ? media[0]
+      : null
+
   return (
     <StyledContainer className={className}>
       <PreventScroll />
@@ -77,9 +95,9 @@ const PresentView = ({
         disableSaveCloseInHistory
       >
         <PresentSwipeTrack
-          currentMedia={media[activeIndex]}
-          previousMedia={media[(activeIndex - 1 + media.length) % media.length]}
-          nextMedia={media[(activeIndex + 1) % media.length]}
+          currentMedia={currentMedia}
+          previousMedia={previousMedia}
+          nextMedia={nextMedia}
           imageLoaded={imageLoaded}
           onNavigate={type => dispatchMedia({ type })}
         />
