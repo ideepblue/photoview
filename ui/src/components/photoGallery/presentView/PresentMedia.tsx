@@ -40,12 +40,14 @@ const PresentMedia = ({
           <StyledPhoto
             key={`${media.id}-thumb`}
             src={media.thumbnail?.url}
+            draggable={false}
             data-testid="present-img-thumbnail"
           />
           <StyledPhoto
             key={`${media.id}-highres`}
             style={{ display: 'none' }}
             src={media.highRes?.url}
+            draggable={false}
             data-testid="present-img-highres"
             onLoad={e => {
               const elem = e.target as HTMLImageElement
