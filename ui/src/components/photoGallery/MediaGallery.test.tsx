@@ -65,6 +65,9 @@ test('photo gallery with media', () => {
   expect(
     screen.getByTestId('photo-gallery-wrapper').querySelectorAll('img')
   ).toHaveLength(3)
+  expect(
+    screen.getAllByRole('button', { name: 'Open photo details' })
+  ).toHaveLength(3)
 })
 
 describe('photo gallery presenting', () => {

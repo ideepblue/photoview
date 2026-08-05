@@ -124,6 +124,7 @@
     }
   },
   "photos_page": {
+    "open_details": "打开照片详情",
     "title": "时间线"
   },
   "places_page": {

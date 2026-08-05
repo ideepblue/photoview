@@ -124,6 +124,7 @@
     }
   },
   "photos_page": {
+    "open_details": "開啟相片詳細資訊",
     "title": "時間軸"
   },
   "places_page": {
