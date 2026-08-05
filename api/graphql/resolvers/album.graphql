@@ -56,5 +56,5 @@ extend type Mutation {
   resetAlbumCover(albumID: ID!): Album! @isAuthorized
 
   "Assign a cover photo to an album"
-  setAlbumCover(coverID: ID!): Album! @isAuthorized
+  setAlbumCover(coverID: ID!, albumID: ID): Album! @isAuthorized
 }

@@ -34,6 +34,13 @@ describe('MediaSidebar', () => {
       __typename: 'Album',
       id: '2294',
       title: 'album_name',
+      path: [
+        {
+          __typename: 'Album',
+          id: '2200',
+          title: 'model_name',
+        },
+      ],
     },
   }
 
@@ -77,7 +84,16 @@ describe('MediaSidebar', () => {
       'http://localhost:3000/photo/highres.jpg'
     )
 
-    expect(screen.getByText('Set as album cover photo')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'Set as cover for current album “album_name”',
+      })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: 'Set as cover for parent album “model_name”',
+      })
+    ).toBeInTheDocument()
     expect(screen.getByText('Album path')).toBeInTheDocument()
 
     screen.debug()

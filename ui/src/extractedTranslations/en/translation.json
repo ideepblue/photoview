@@ -258,8 +258,13 @@
           "title": "Converted videos"
         }
       },
+      "cover_set_for": "Cover set for “{{album}}”",
       "reset_cover": "Reset cover photo",
       "set_cover": "Set as album cover photo",
+      "set_cover_failed": "Could not set the cover. Please try again.",
+      "set_cover_for_current": "Set as cover for current album “{{album}}”",
+      "set_cover_for_parent": "Set as cover for parent album “{{album}}”",
+      "set_cover_help": "Choose whether this photo should cover the current album or its parent album.",
       "title_placeholder": "Album title"
     },
     "download": {

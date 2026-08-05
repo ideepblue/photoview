@@ -139,13 +139,21 @@ func AlbumPath(db *gorm.DB, user *models.User, album *models.Album) ([]*models.A
 func SetAlbumCover(db *gorm.DB, user *models.User, mediaID int) (*models.Album, error) {
 	var media models.Media
 
-	if err := db.Find(&media, mediaID).Error; err != nil {
+	if err := db.First(&media, mediaID).Error; err != nil {
+		return nil, err
+	}
+
+	return SetAlbumCoverForAlbum(db, user, mediaID, media.AlbumID)
+}
+
+func SetAlbumCoverForAlbum(db *gorm.DB, user *models.User, mediaID int, albumID int) (*models.Album, error) {
+	var media models.Media
+	if err := db.First(&media, mediaID).Error; err != nil {
 		return nil, err
 	}
 
 	var album models.Album
-
-	if err := db.Find(&album, &media.AlbumID).Error; err != nil {
+	if err := db.First(&album, albumID).Error; err != nil {
 		return nil, err
 	}
 
@@ -156,6 +164,28 @@ func SetAlbumCover(db *gorm.DB, user *models.User, mediaID int) (*models.Album, 
 
 	if !ownsAlbum {
 		return nil, errors.New("forbidden")
+	}
+
+	var mediaAlbum models.Album
+	if err := db.First(&mediaAlbum, media.AlbumID).Error; err != nil {
+		return nil, err
+	}
+	ownsMediaAlbum, err := user.OwnsAlbum(db, &mediaAlbum)
+	if err != nil {
+		return nil, err
+	}
+	if !ownsMediaAlbum {
+		return nil, errors.New("forbidden")
+	}
+
+	matchingAlbums, err := album.GetChildren(db, func(query *gorm.DB) *gorm.DB {
+		return query.Where("id = ?", media.AlbumID)
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(matchingAlbums) == 0 {
+		return nil, errors.New("cover photo must belong to the album or one of its descendants")
 	}
 
 	if err := db.Model(&album).Update("cover_id", mediaID).Error; err != nil {

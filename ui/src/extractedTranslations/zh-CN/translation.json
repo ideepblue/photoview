@@ -258,8 +258,13 @@
           "title": "已转换视频"
         }
       },
+      "cover_set_for": "已设为“{{album}}”的封面",
       "reset_cover": "重设封面照片",
       "set_cover": "设置为封面图片",
+      "set_cover_failed": "设置封面失败，请重试。",
+      "set_cover_for_current": "设为当前相册“{{album}}”的封面",
+      "set_cover_for_parent": "设为上一级相册“{{album}}”的封面",
+      "set_cover_help": "选择将这张照片设为当前作品相册或上一级模特相册的封面。",
       "title_placeholder": "相册名称"
     },
     "download": {

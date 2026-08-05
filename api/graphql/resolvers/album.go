@@ -106,10 +106,14 @@ func (r *mutationResolver) ResetAlbumCover(ctx context.Context, albumID int) (*m
 }
 
 // SetAlbumCover is the resolver for the setAlbumCover field.
-func (r *mutationResolver) SetAlbumCover(ctx context.Context, coverID int) (*models.Album, error) {
+func (r *mutationResolver) SetAlbumCover(ctx context.Context, coverID int, albumID *int) (*models.Album, error) {
 	user := auth.UserFromContext(ctx)
 	if user == nil {
 		return nil, errors.New("unauthorized")
+	}
+
+	if albumID != nil {
+		return actions.SetAlbumCoverForAlbum(r.DB(ctx), user, coverID, *albumID)
 	}
 
 	return actions.SetAlbumCover(r.DB(ctx), user, coverID)

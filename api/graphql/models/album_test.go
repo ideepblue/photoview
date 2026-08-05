@@ -162,6 +162,70 @@ func TestAlbumThumbnail(t *testing.T) {
 		assert.Equal(t, media.ID, result.ID)
 	})
 
+	t.Run("Exact cover filename outranks newer media", func(t *testing.T) {
+		album := models.Album{
+			Title: "Automatic cover album",
+			Path:  "/automatic_cover",
+		}
+		if !assert.NoError(t, db.Save(&album).Error) {
+			return
+		}
+
+		mediaItems := []models.Media{
+			{Title: "cover.jpg", Path: "/automatic_cover/cover.jpg", AlbumID: album.ID},
+			{Title: "portrait-cover-v2.jpg", Path: "/automatic_cover/portrait-cover-v2.jpg", AlbumID: album.ID},
+			{Title: "9999.jpg", Path: "/automatic_cover/9999.jpg", AlbumID: album.ID},
+		}
+		if !assert.NoError(t, db.Save(&mediaItems).Error) {
+			return
+		}
+
+		result, err := album.Thumbnail(db)
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, mediaItems[0].ID, result.ID)
+	})
+
+	t.Run("Direct cover filename outranks a descendant cover", func(t *testing.T) {
+		parent := models.Album{
+			Title: "Model album",
+			Path:  "/model",
+		}
+		if !assert.NoError(t, db.Save(&parent).Error) {
+			return
+		}
+		child := models.Album{
+			Title:         "Issue album",
+			Path:          "/model/issue",
+			ParentAlbumID: &parent.ID,
+		}
+		if !assert.NoError(t, db.Save(&child).Error) {
+			return
+		}
+
+		direct := models.Media{
+			Title:   "profile-cover.jpg",
+			Path:    "/model/profile-cover.jpg",
+			AlbumID: parent.ID,
+		}
+		descendant := models.Media{
+			Title:   "cover.jpg",
+			Path:    "/model/issue/cover.jpg",
+			AlbumID: child.ID,
+		}
+		if !assert.NoError(t, db.Save(&direct).Error) {
+			return
+		}
+		if !assert.NoError(t, db.Save(&descendant).Error) {
+			return
+		}
+
+		result, err := parent.Thumbnail(db)
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, direct.ID, result.ID)
+	})
+
 	t.Run("Thumbnail from child media", func(t *testing.T) {
 		parentAlbum := models.Album{
 			Title: "Parent album",
