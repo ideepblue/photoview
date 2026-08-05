@@ -27,7 +27,11 @@ const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
     }
   }
 
-  return <div className="-mx-3 my-6">{albumElements}</div>
+  return (
+    <div className="grid grid-cols-2 gap-x-2 gap-y-3 my-6 xs:block xs:-mx-3">
+      {albumElements}
+    </div>
+  )
 }
 
 export default AlbumBoxes
