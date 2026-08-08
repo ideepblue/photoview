@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { albumQuery_album_subAlbums } from '../../Pages/AlbumPage/__generated__/albumQuery'
 import { AlbumBox } from './AlbumBox'
@@ -16,9 +16,27 @@ type AlbumBoxesProps = {
 
 const mobileAlbumLayoutClass: Record<MobileAlbumLayout, string> = {
   list: 'mobile-album-list',
-  'columns-2': 'mobile-album-grid-2',
-  'columns-3': 'mobile-album-grid-3',
-  'columns-4': 'mobile-album-grid-4',
+  'columns-2': 'mobile-album-lanes mobile-album-lanes-2',
+  'columns-3': 'mobile-album-lanes mobile-album-lanes-3',
+  'columns-4': 'mobile-album-lanes mobile-album-lanes-4',
+}
+
+const MOBILE_ALBUM_BREAKPOINT = 480
+
+const isMobileAlbumViewport = () =>
+  typeof window !== 'undefined' && window.innerWidth < MOBILE_ALBUM_BREAKPOINT
+
+const mobileAlbumColumnCount = (layout: MobileAlbumLayout) => {
+  switch (layout) {
+    case 'columns-2':
+      return 2
+    case 'columns-3':
+      return 3
+    case 'columns-4':
+      return 4
+    default:
+      return 0
+  }
 }
 
 const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
@@ -26,10 +44,18 @@ const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
   const [layout, setLayout] = useState<MobileAlbumLayout>(() =>
     readMobileAlbumLayout()
   )
+  const [mobileViewport, setMobileViewport] = useState(isMobileAlbumViewport)
+
+  useEffect(() => {
+    const updateViewport = () => setMobileViewport(isMobileAlbumViewport())
+
+    window.addEventListener('resize', updateViewport)
+    return () => window.removeEventListener('resize', updateViewport)
+  }, [])
 
   if (error) return <div>Error {error.message}</div>
 
-  let albumElements = []
+  let albumElements: React.ReactElement[] = []
 
   if (albums !== undefined) {
     albumElements = albums.map(album => (
@@ -78,6 +104,17 @@ const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
     },
   ]
 
+  const columnCount = mobileViewport ? mobileAlbumColumnCount(layout) : 0
+  const albumColumns = columnCount
+    ? Array.from({ length: columnCount }, () => [] as React.ReactElement[])
+    : null
+
+  if (albumColumns) {
+    albumElements.forEach((element, index) => {
+      albumColumns[index % columnCount].push(element)
+    })
+  }
+
   return (
     <>
       <div
@@ -113,7 +150,17 @@ const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
         data-mobile-layout={layout}
         className={`${mobileAlbumLayoutClass[layout]} my-4 xs:my-6 xs:block xs:-mx-3`}
       >
-        {albumElements}
+        {albumColumns
+          ? albumColumns.map((column, index) => (
+              <div
+                key={index}
+                data-testid="album-lane"
+                className="mobile-album-lane"
+              >
+                {column}
+              </div>
+            ))
+          : albumElements}
       </div>
     </>
   )
