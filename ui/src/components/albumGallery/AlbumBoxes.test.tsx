@@ -34,7 +34,7 @@ beforeEach(() => {
   window.localStorage.clear()
 })
 
-test('defaults to a mobile two-column CSS layout and keeps desktop flow', () => {
+test('defaults to a mobile two-column grid and keeps desktop flow', () => {
   renderAlbums()
 
   const gallery = screen.getByTestId('album-boxes')
@@ -42,7 +42,7 @@ test('defaults to a mobile two-column CSS layout and keeps desktop flow', () => 
   const thumbnail = screen.getByTestId('album-cover-frame')
 
   expect(gallery).toHaveAttribute('data-mobile-layout', 'columns-2')
-  expect(gallery).toHaveClass('mobile-album-columns-2', 'xs:block', 'xs:-mx-3')
+  expect(gallery).toHaveClass('mobile-album-grid-2', 'xs:block', 'xs:-mx-3')
   expect(card).toHaveClass(
     'mobile-album-card',
     'xs:inline-block',
@@ -74,7 +74,7 @@ test('offers list, two, three, and four column choices and persists changes', as
     'columns-3'
   )
   expect(screen.getByTestId('album-boxes')).toHaveClass(
-    'mobile-album-columns-3'
+    'mobile-album-grid-3'
   )
   expect(window.localStorage.getItem(MOBILE_ALBUM_LAYOUT_KEY)).toBe('columns-3')
 
@@ -87,7 +87,7 @@ test('offers list, two, three, and four column choices and persists changes', as
   )
 })
 
-test('uses a production-safe class for the four-column layout', async () => {
+test('uses a row-major grid class for the four-column layout', async () => {
   const user = userEvent.setup()
   renderAlbums()
 
@@ -98,7 +98,7 @@ test('uses a production-safe class for the four-column layout', async () => {
     'columns-4'
   )
   expect(screen.getByTestId('album-boxes')).toHaveClass(
-    'mobile-album-columns-four'
+    'mobile-album-grid-4'
   )
 })
 

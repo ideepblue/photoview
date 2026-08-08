@@ -16,9 +16,9 @@ type AlbumBoxesProps = {
 
 const mobileAlbumLayoutClass: Record<MobileAlbumLayout, string> = {
   list: 'mobile-album-list',
-  'columns-2': 'mobile-album-columns-2',
-  'columns-3': 'mobile-album-columns-3',
-  'columns-4': 'mobile-album-columns-four',
+  'columns-2': 'mobile-album-grid-2',
+  'columns-3': 'mobile-album-grid-3',
+  'columns-4': 'mobile-album-grid-4',
 }
 
 const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
