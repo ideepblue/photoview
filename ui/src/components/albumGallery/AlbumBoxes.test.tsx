@@ -87,6 +87,21 @@ test('offers list, two, three, and four column choices and persists changes', as
   )
 })
 
+test('uses a production-safe class for the four-column layout', async () => {
+  const user = userEvent.setup()
+  renderAlbums()
+
+  await user.click(screen.getByRole('button', { name: '4 columns' }))
+
+  expect(screen.getByTestId('album-boxes')).toHaveAttribute(
+    'data-mobile-layout',
+    'columns-4'
+  )
+  expect(screen.getByTestId('album-boxes')).toHaveClass(
+    'mobile-album-columns-four'
+  )
+})
+
 test('uses a compact horizontal card in list mode', async () => {
   const user = userEvent.setup()
   renderAlbums()

@@ -31,7 +31,7 @@ html {
     column-gap: 0.375rem;
   }
 
-  .mobile-album-columns-4 {
+  .mobile-album-columns-four {
     column-count: 4;
     column-gap: 0.25rem;
   }
@@ -54,7 +54,7 @@ html {
   @media (min-width: 480px) {
     .mobile-album-columns-2,
     .mobile-album-columns-3,
-    .mobile-album-columns-4 {
+    .mobile-album-columns-four {
       column-count: initial;
     }
 

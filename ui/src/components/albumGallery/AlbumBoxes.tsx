@@ -14,6 +14,13 @@ type AlbumBoxesProps = {
   getCustomLink?(albumID: string): string
 }
 
+const mobileAlbumLayoutClass: Record<MobileAlbumLayout, string> = {
+  list: 'mobile-album-list',
+  'columns-2': 'mobile-album-columns-2',
+  'columns-3': 'mobile-album-columns-3',
+  'columns-4': 'mobile-album-columns-four',
+}
+
 const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
   const { t } = useTranslation()
   const [layout, setLayout] = useState<MobileAlbumLayout>(() =>
@@ -104,7 +111,7 @@ const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
       <div
         data-testid="album-boxes"
         data-mobile-layout={layout}
-        className={`mobile-album-${layout} my-4 xs:my-6 xs:block xs:-mx-3`}
+        className={`${mobileAlbumLayoutClass[layout]} my-4 xs:my-6 xs:block xs:-mx-3`}
       >
         {albumElements}
       </div>
