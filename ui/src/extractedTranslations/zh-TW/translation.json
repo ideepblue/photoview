@@ -15,6 +15,16 @@
       "type": "類型"
     }
   },
+  "album_layout": {
+    "album_badge": "相簿",
+    "columns_2": "2 欄",
+    "columns_3": "3 欄",
+    "columns_4": "4 欄",
+    "label": "相簿版面",
+    "list": "精簡列表",
+    "photos": "相片",
+    "subalbums": "子相簿"
+  },
   "general": {
     "action": {
       "add": "新增",

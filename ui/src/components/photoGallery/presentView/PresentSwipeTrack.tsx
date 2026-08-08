@@ -60,6 +60,7 @@ type PresentSwipeTrackProps = {
   nextMedia: PresentMediaFields | null
   previousMedia: PresentMediaFields | null
   onNavigate(navigation: SwipeNavigation): void
+  onTap?(): void
   imageLoaded?(): void
 }
 
@@ -82,6 +83,7 @@ const PresentSwipeTrack = ({
   nextMedia,
   previousMedia,
   onNavigate,
+  onTap,
   imageLoaded,
 }: PresentSwipeTrackProps) => {
   const [motion, setMotion] = useState<MotionState>(idleMotion)
@@ -225,6 +227,7 @@ const PresentSwipeTrack = ({
 
     const activeMotion = motionRef.current
     if (activeMotion.axis === null || activeMotion.target === null) {
+      onTap?.()
       resetMotion()
       return
     }

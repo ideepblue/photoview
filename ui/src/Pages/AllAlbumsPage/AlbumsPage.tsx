@@ -21,6 +21,8 @@ const getAlbumsQuery = gql`
         id
         thumbnail {
           url
+          width
+          height
         }
       }
     }

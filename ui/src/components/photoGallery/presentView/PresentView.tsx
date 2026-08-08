@@ -1,9 +1,11 @@
-import React, { useEffect } from 'react'
+import React, { useContext, useEffect } from 'react'
 import styled, { createGlobalStyle } from 'styled-components'
 import PresentNavigationOverlay from './PresentNavigationOverlay'
 import PresentSwipeTrack from './PresentSwipeTrack'
 import { closePresentModeAction, GalleryAction } from '../mediaGalleryReducer'
 import { PresentMediaFields } from './PresentMedia'
+import { SidebarContext } from '../../sidebar/Sidebar'
+import MediaSidebar from '../../sidebar/MediaSidebar/MediaSidebar'
 
 const StyledContainer = styled.div`
   position: fixed;
@@ -17,7 +19,7 @@ const StyledContainer = styled.div`
 `
 
 const PreventScroll = createGlobalStyle`
-  * {
+  body {
     overflow: hidden !important;
   }
 `
@@ -41,6 +43,8 @@ const PresentView = ({
   dispatchMedia,
   disableSaveCloseInHistory,
 }: PresentViewProps) => {
+  const { updateSidebar } = useContext(SidebarContext)
+
   useEffect(() => {
     const keyDownEvent = (e: KeyboardEvent) => {
       if (e.key == 'ArrowRight') {
@@ -93,14 +97,20 @@ const PresentView = ({
       <PresentNavigationOverlay
         dispatchMedia={dispatchMedia}
         disableSaveCloseInHistory
+        onShowInfo={() => {
+          updateSidebar(<MediaSidebar media={currentMedia} hidePreview />)
+        }}
       >
-        <PresentSwipeTrack
-          currentMedia={currentMedia}
-          previousMedia={previousMedia}
-          nextMedia={nextMedia}
-          imageLoaded={imageLoaded}
-          onNavigate={type => dispatchMedia({ type })}
-        />
+        {showControls => (
+          <PresentSwipeTrack
+            currentMedia={currentMedia}
+            previousMedia={previousMedia}
+            nextMedia={nextMedia}
+            imageLoaded={imageLoaded}
+            onNavigate={type => dispatchMedia({ type })}
+            onTap={showControls}
+          />
+        )}
       </PresentNavigationOverlay>
     </StyledContainer>
   )

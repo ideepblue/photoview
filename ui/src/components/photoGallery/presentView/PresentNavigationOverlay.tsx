@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import styled from 'styled-components'
-import { debounce, DebouncedFn } from '../../../helpers/utils'
 import { closePresentModeAction, GalleryAction } from '../mediaGalleryReducer'
+import { useTranslation } from 'react-i18next'
 
 import ExitIcon from './icons/Exit'
+import InfoIcon from './icons/Info'
 import NextIcon from './icons/Next'
 import PrevIcon from './icons/Previous'
 
@@ -44,10 +45,19 @@ const OverlayButton = styled.button`
     stroke: rgba(255, 255, 255, 0);
     transition: stroke 300ms;
   }
+
+  &.hide {
+    pointer-events: none;
+  }
 `
 
 const ExitButton = styled(OverlayButton)`
   left: 28px;
+  top: 28px;
+`
+
+const InfoButton = styled(OverlayButton)`
+  right: 28px;
   top: 28px;
 `
 
@@ -67,46 +77,60 @@ const NavigationButton = styled(OverlayButton)<{ align: 'left' | 'right' }>`
 `
 
 type PresentNavigationOverlayProps = {
-  children?: React.ReactChild
+  children?: React.ReactNode | ((showControls: () => void) => React.ReactNode)
   dispatchMedia: React.Dispatch<GalleryAction>
   disableSaveCloseInHistory?: boolean
+  onShowInfo?(): void
 }
 
 const PresentNavigationOverlay = ({
   children,
   dispatchMedia,
   disableSaveCloseInHistory,
+  onShowInfo,
 }: PresentNavigationOverlayProps) => {
+  const { t } = useTranslation()
   const [hide, setHide] = useState(true)
-  const onMouseMove = useRef<null | DebouncedFn<() => void>>(null)
+  const hideTimer = useRef<number | null>(null)
+
+  const showControls = useCallback(() => {
+    setHide(false)
+
+    if (hideTimer.current !== null) {
+      window.clearTimeout(hideTimer.current)
+    }
+
+    hideTimer.current = window.setTimeout(() => {
+      hideTimer.current = null
+      setHide(true)
+    }, 2000)
+  }, [])
 
   useEffect(() => {
-    onMouseMove.current = debounce(
-      () => {
-        setHide(hide => !hide)
-      },
-      2000,
-      true
-    )
-
     return () => {
-      onMouseMove.current?.cancel()
+      if (hideTimer.current !== null) {
+        window.clearTimeout(hideTimer.current)
+      }
     }
   }, [])
+
+  const childContent =
+    typeof children === 'function' ? children(showControls) : children
 
   return (
     <StyledOverlayContainer
       data-testid="present-overlay"
-      onMouseMove={() => {
-        onMouseMove.current && onMouseMove.current()
-      }}
+      onMouseMove={showControls}
     >
-      {children}
+      {childContent}
       <NavigationButton
         aria-label="Previous image"
         className={hide ? 'hide' : undefined}
         align="left"
-        onClick={() => dispatchMedia({ type: 'previousImage' })}
+        onClick={event => {
+          event.stopPropagation()
+          dispatchMedia({ type: 'previousImage' })
+        }}
       >
         <PrevIcon />
       </NavigationButton>
@@ -114,14 +138,18 @@ const PresentNavigationOverlay = ({
         aria-label="Next image"
         className={hide ? 'hide' : undefined}
         align="right"
-        onClick={() => dispatchMedia({ type: 'nextImage' })}
+        onClick={event => {
+          event.stopPropagation()
+          dispatchMedia({ type: 'nextImage' })
+        }}
       >
         <NextIcon />
       </NavigationButton>
       <ExitButton
         aria-label="Exit presentation mode"
         className={hide ? 'hide' : undefined}
-        onClick={() => {
+        onClick={event => {
+          event.stopPropagation()
           if (disableSaveCloseInHistory === true) {
             dispatchMedia({ type: 'closePresentMode' })
           } else {
@@ -131,6 +159,18 @@ const PresentNavigationOverlay = ({
       >
         <ExitIcon />
       </ExitButton>
+      {onShowInfo && (
+        <InfoButton
+          aria-label={t('photos_page.open_details', 'Open photo details')}
+          className={hide ? 'hide' : undefined}
+          onClick={event => {
+            event.stopPropagation()
+            onShowInfo()
+          }}
+        >
+          <InfoIcon />
+        </InfoButton>
+      )}
     </StyledOverlayContainer>
   )
 }

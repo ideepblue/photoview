@@ -3,6 +3,8 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { MediaType } from '../../../__generated__/globalTypes'
 import { MediaGalleryFields } from '../__generated__/MediaGalleryFields'
 import PresentView from './PresentView'
+import { SidebarContext } from '../../sidebar/Sidebar'
+import MediaSidebar from '../../sidebar/MediaSidebar/MediaSidebar'
 
 vi.useFakeTimers()
 
@@ -124,4 +126,64 @@ test('passes the next item into the animated track before dispatching', () => {
   })
 
   expect(dispatchMedia).toHaveBeenCalledWith({ type: 'nextImage' })
+})
+
+test('a light tap reveals info for the active photo without closing it', () => {
+  const dispatchMedia = vi.fn()
+  const updateSidebar = vi.fn()
+
+  render(
+    <SidebarContext.Provider
+      value={{
+        updateSidebar,
+        setPinned: vi.fn(),
+        content: null,
+        pinned: false,
+      }}
+    >
+      <PresentView
+        media={media}
+        activeIndex={1}
+        dispatchMedia={dispatchMedia}
+        disableSaveCloseInHistory
+      />
+    </SidebarContext.Provider>
+  )
+
+  const infoButton = screen.getByRole('button', {
+    name: 'Open photo details',
+  })
+  expect(infoButton).toHaveClass('hide')
+
+  const track = screen.getByTestId('present-swipe-track')
+  fireEvent.pointerDown(track, {
+    pointerId: 7,
+    button: 0,
+    clientX: 200,
+    clientY: 400,
+  })
+  fireEvent.pointerUp(track, {
+    pointerId: 7,
+    clientX: 200,
+    clientY: 400,
+  })
+
+  expect(infoButton).not.toHaveClass('hide')
+  fireEvent.click(infoButton)
+
+  const details = updateSidebar.mock.calls[0][0] as React.ReactElement<{
+    media: { id: string }
+    hidePreview: boolean
+  }>
+  expect(details.type).toBe(MediaSidebar)
+  expect(details.props).toMatchObject({
+    media: { id: 'current' },
+    hidePreview: true,
+  })
+  expect(dispatchMedia).not.toHaveBeenCalledWith({ type: 'closePresentMode' })
+  expect(
+    within(screen.getByTestId('present-swipe-current')).getByTestId(
+      'present-img-thumbnail'
+    )
+  ).toHaveAttribute('src', 'http://localhost:3000/current.jpg')
 })

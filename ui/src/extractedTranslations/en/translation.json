@@ -15,6 +15,16 @@
       "type": "Kind"
     }
   },
+  "album_layout": {
+    "album_badge": "Album",
+    "columns_2": "2 columns",
+    "columns_3": "3 columns",
+    "columns_4": "4 columns",
+    "label": "Album layout",
+    "list": "Compact list",
+    "photos": "Photos",
+    "subalbums": "Subalbums"
+  },
   "general": {
     "action": {
       "add": "Add",
