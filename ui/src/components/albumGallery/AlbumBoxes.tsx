@@ -22,9 +22,26 @@ const mobileAlbumLayoutClass: Record<MobileAlbumLayout, string> = {
 }
 
 const MOBILE_ALBUM_BREAKPOINT = 480
+// Layout uses mx-3 on both sides below the mobile breakpoint.
+const MOBILE_ALBUM_CONTENT_HORIZONTAL_MARGIN = 24
+// Cover title line (24px) + mt-1 (4px) + mb-3 (12px).
+const MOBILE_ALBUM_CARD_CHROME_HEIGHT = 40
+const MOBILE_ALBUM_COLUMN_GAP: Record<number, number> = {
+  2: 8,
+  3: 6,
+  4: 4,
+}
 
-const isMobileAlbumViewport = () =>
-  typeof window !== 'undefined' && window.innerWidth < MOBILE_ALBUM_BREAKPOINT
+const mobileAlbumViewportWidth = () => {
+  if (
+    typeof window === 'undefined' ||
+    window.innerWidth >= MOBILE_ALBUM_BREAKPOINT
+  ) {
+    return null
+  }
+
+  return window.innerWidth
+}
 
 const mobileAlbumColumnCount = (layout: MobileAlbumLayout) => {
   switch (layout) {
@@ -39,15 +56,33 @@ const mobileAlbumColumnCount = (layout: MobileAlbumLayout) => {
   }
 }
 
+const validDimension = (value?: number | null) =>
+  value && value > 0 ? value : undefined
+
+const estimateAlbumCardHeight = (
+  album: albumQuery_album_subAlbums | undefined,
+  laneWidth: number
+) => {
+  const thumbnail = album?.thumbnail?.thumbnail
+  const width = validDimension(thumbnail?.width) || 3
+  const height = validDimension(thumbnail?.height) || 4
+  const titleAndSpacing = album ? MOBILE_ALBUM_CARD_CHROME_HEIGHT : 12
+
+  return laneWidth * (height / width) + titleAndSpacing
+}
+
 const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
   const { t } = useTranslation()
   const [layout, setLayout] = useState<MobileAlbumLayout>(() =>
     readMobileAlbumLayout()
   )
-  const [mobileViewport, setMobileViewport] = useState(isMobileAlbumViewport)
+  const [mobileViewportWidth, setMobileViewportWidth] = useState(
+    mobileAlbumViewportWidth
+  )
 
   useEffect(() => {
-    const updateViewport = () => setMobileViewport(isMobileAlbumViewport())
+    const updateViewport = () =>
+      setMobileViewportWidth(mobileAlbumViewportWidth())
 
     window.addEventListener('resize', updateViewport)
     return () => window.removeEventListener('resize', updateViewport)
@@ -55,20 +90,28 @@ const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
 
   if (error) return <div>Error {error.message}</div>
 
-  let albumElements: React.ReactElement[] = []
+  let albumCards: Array<{
+    album?: albumQuery_album_subAlbums
+    element: React.ReactElement
+  }> = []
 
   if (albums !== undefined) {
-    albumElements = albums.map(album => (
-      <AlbumBox
-        key={album.id}
-        album={album}
-        layout={layout}
-        customLink={getCustomLink ? getCustomLink(album.id) : undefined}
-      />
-    ))
+    albumCards = albums.map(album => ({
+      album,
+      element: (
+        <AlbumBox
+          key={album.id}
+          album={album}
+          layout={layout}
+          customLink={getCustomLink ? getCustomLink(album.id) : undefined}
+        />
+      ),
+    }))
   } else {
     for (let i = 0; i < 4; i++) {
-      albumElements.push(<AlbumBox key={i} layout={layout} />)
+      albumCards.push({
+        element: <AlbumBox key={i} layout={layout} />,
+      })
     }
   }
 
@@ -104,16 +147,38 @@ const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
     },
   ]
 
-  const columnCount = mobileViewport ? mobileAlbumColumnCount(layout) : 0
+  const columnCount =
+    mobileViewportWidth === null ? 0 : mobileAlbumColumnCount(layout)
   const albumColumns = columnCount
     ? Array.from({ length: columnCount }, () => [] as React.ReactElement[])
     : null
 
   if (albumColumns) {
-    albumElements.forEach((element, index) => {
-      albumColumns[index % columnCount].push(element)
+    const gap = MOBILE_ALBUM_COLUMN_GAP[columnCount] || 0
+    const laneWidth = Math.max(
+      (mobileViewportWidth! -
+        MOBILE_ALBUM_CONTENT_HORIZONTAL_MARGIN -
+        gap * (columnCount - 1)) /
+        columnCount,
+      1
+    )
+    const laneHeights = Array.from({ length: columnCount }, () => 0)
+
+    albumCards.forEach(({ album, element }) => {
+      let shortestLane = 0
+
+      for (let lane = 1; lane < columnCount; lane++) {
+        if (laneHeights[lane] < laneHeights[shortestLane]) {
+          shortestLane = lane
+        }
+      }
+
+      albumColumns[shortestLane].push(element)
+      laneHeights[shortestLane] += estimateAlbumCardHeight(album, laneWidth)
     })
   }
+
+  const albumElements = albumCards.map(card => card.element)
 
   return (
     <>

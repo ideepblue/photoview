@@ -37,6 +37,65 @@ const albums = Array.from({ length: 8 }, (_, index) => ({
   },
 })) as albumQuery_album_subAlbums[]
 
+const masonryAlbums = albums.map((item, index) => ({
+  ...item,
+  thumbnail: {
+    ...item.thumbnail,
+    thumbnail: {
+      ...item.thumbnail?.thumbnail,
+      width: 1000,
+      height: index === 0 ? 3000 : 1000,
+    },
+  },
+})) as albumQuery_album_subAlbums[]
+
+const albumsWithMissingCoverSize = [
+  {
+    ...albums[0],
+    thumbnail: {
+      ...albums[0].thumbnail,
+      thumbnail: {
+        ...albums[0].thumbnail?.thumbnail,
+        width: null,
+        height: null,
+      },
+    },
+  },
+  {
+    ...albums[1],
+    thumbnail: {
+      ...albums[1].thumbnail,
+      thumbnail: {
+        ...albums[1].thumbnail?.thumbnail,
+        width: 1000,
+        height: 1000,
+      },
+    },
+  },
+  {
+    ...albums[2],
+    thumbnail: {
+      ...albums[2].thumbnail,
+      thumbnail: {
+        ...albums[2].thumbnail?.thumbnail,
+        width: 1000,
+        height: 3000,
+      },
+    },
+  },
+  {
+    ...albums[3],
+    thumbnail: {
+      ...albums[3].thumbnail,
+      thumbnail: {
+        ...albums[3].thumbnail?.thumbnail,
+        width: 1000,
+        height: 1000,
+      },
+    },
+  },
+] as unknown as albumQuery_album_subAlbums[]
+
 const renderAlbums = (items: albumQuery_album_subAlbums[] = [album]) =>
   render(
     <MemoryRouter>
@@ -57,8 +116,8 @@ beforeEach(() => {
   })
 })
 
-test('places albums round-robin into two independent mobile lanes', () => {
-  renderAlbums(albums)
+test('places every album into the shortest of two mobile lanes', () => {
+  renderAlbums(masonryAlbums)
 
   const gallery = screen.getByTestId('album-boxes')
   const lanes = screen.getAllByTestId('album-lane')
@@ -68,16 +127,34 @@ test('places albums round-robin into two independent mobile lanes', () => {
   expect(lanes).toHaveLength(2)
   expect(laneLinks(lanes[0])).toEqual([
     '/album/album-1',
-    '/album/album-3',
     '/album/album-5',
     '/album/album-7',
   ])
   expect(laneLinks(lanes[1])).toEqual([
     '/album/album-2',
+    '/album/album-3',
     '/album/album-4',
     '/album/album-6',
     '/album/album-8',
   ])
+})
+
+test('breaks equal-height lane ties from left to right', () => {
+  renderAlbums(albums.slice(0, 4))
+
+  const lanes = screen.getAllByTestId('album-lane')
+
+  expect(laneLinks(lanes[0])).toEqual(['/album/album-1', '/album/album-3'])
+  expect(laneLinks(lanes[1])).toEqual(['/album/album-2', '/album/album-4'])
+})
+
+test('uses the existing 3:4 placeholder ratio when cover dimensions are missing', () => {
+  renderAlbums(albumsWithMissingCoverSize)
+
+  const lanes = screen.getAllByTestId('album-lane')
+
+  expect(laneLinks(lanes[0])).toEqual(['/album/album-1', '/album/album-4'])
+  expect(laneLinks(lanes[1])).toEqual(['/album/album-2', '/album/album-3'])
 })
 
 test('keeps natural covers and the existing desktop card dimensions', () => {
@@ -128,31 +205,31 @@ test('offers list, two, three, and four column choices and persists changes', as
   )
 })
 
-test('places albums round-robin into three independent mobile lanes', async () => {
+test('places every album into the shortest of three mobile lanes', async () => {
   const user = userEvent.setup()
-  renderAlbums(albums)
+  renderAlbums(masonryAlbums)
 
   await user.click(screen.getByRole('button', { name: '3 columns' }))
 
   const lanes = screen.getAllByTestId('album-lane')
 
   expect(lanes).toHaveLength(3)
-  expect(laneLinks(lanes[0])).toEqual([
-    '/album/album-1',
-    '/album/album-4',
-    '/album/album-7',
-  ])
+  expect(laneLinks(lanes[0])).toEqual(['/album/album-1', '/album/album-8'])
   expect(laneLinks(lanes[1])).toEqual([
     '/album/album-2',
-    '/album/album-5',
-    '/album/album-8',
+    '/album/album-4',
+    '/album/album-6',
   ])
-  expect(laneLinks(lanes[2])).toEqual(['/album/album-3', '/album/album-6'])
+  expect(laneLinks(lanes[2])).toEqual([
+    '/album/album-3',
+    '/album/album-5',
+    '/album/album-7',
+  ])
 })
 
-test('places albums round-robin into four independent mobile lanes', async () => {
+test('places every album into the shortest of four mobile lanes', async () => {
   const user = userEvent.setup()
-  renderAlbums(albums)
+  renderAlbums(masonryAlbums)
 
   await user.click(screen.getByRole('button', { name: '4 columns' }))
 
@@ -164,10 +241,14 @@ test('places albums round-robin into four independent mobile lanes', async () =>
   const lanes = screen.getAllByTestId('album-lane')
 
   expect(lanes).toHaveLength(4)
-  expect(laneLinks(lanes[0])).toEqual(['/album/album-1', '/album/album-5'])
-  expect(laneLinks(lanes[1])).toEqual(['/album/album-2', '/album/album-6'])
-  expect(laneLinks(lanes[2])).toEqual(['/album/album-3', '/album/album-7'])
-  expect(laneLinks(lanes[3])).toEqual(['/album/album-4', '/album/album-8'])
+  expect(laneLinks(lanes[0])).toEqual(['/album/album-1'])
+  expect(laneLinks(lanes[1])).toEqual([
+    '/album/album-2',
+    '/album/album-5',
+    '/album/album-8',
+  ])
+  expect(laneLinks(lanes[2])).toEqual(['/album/album-3', '/album/album-6'])
+  expect(laneLinks(lanes[3])).toEqual(['/album/album-4', '/album/album-7'])
 })
 
 test('keeps albums flat and in source order on desktop widths', () => {
