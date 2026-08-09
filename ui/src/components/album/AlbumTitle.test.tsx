@@ -63,9 +63,13 @@ test('links back to the immediate parent album', async () => {
     </MemoryRouter>
   )
 
-  expect(
-    await screen.findByRole('link', { name: 'Back to parent album' })
-  ).toHaveAttribute('href', '/album/2')
+  const backLink = await screen.findByRole('link', {
+    name: 'Back to parent album',
+  })
+
+  expect(backLink).toHaveAttribute('href', '/album/2')
+  expect(backLink).toHaveClass('px-0', 'py-0')
+  expect(backLink).not.toHaveClass('px-6', 'py-0.5')
 })
 
 test('links a root album back to the albums page', async () => {
