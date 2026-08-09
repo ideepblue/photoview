@@ -240,25 +240,37 @@ func AddUserToQueue(user *models.User) error {
 
 // Queue should be locked prior to calling this function
 func (queue *ScannerQueue) addJob(job *ScannerJob) error {
-	if exists, err := queue.jobOnQueue(job); exists || err != nil {
-		return err
+	albumID := job.ctx.GetAlbum().ID
+	requestedForce := job.ctx.GetScanOptions().ForceRefresh
+
+	for i := range queue.up_next {
+		queuedJob := &queue.up_next[i]
+		if queuedJob.ctx.GetAlbum().ID != albumID {
+			continue
+		}
+
+		if requestedForce && !queuedJob.ctx.GetScanOptions().ForceRefresh {
+			queuedJob.ctx = queuedJob.ctx.WithScanOptions(scanner_task.ScanOptions{ForceRefresh: true})
+		}
+
+		return nil
 	}
+
+	for i := range queue.in_progress {
+		runningJob := &queue.in_progress[i]
+		if runningJob.ctx.GetAlbum().ID != albumID {
+			continue
+		}
+
+		if !requestedForce || runningJob.ctx.GetScanOptions().ForceRefresh {
+			return nil
+		}
+
+		break
+	}
+
 	queue.up_next = append(queue.up_next, *job)
 	queue.notify()
 
 	return nil
-}
-
-// Queue should be locked prior to calling this function
-func (queue *ScannerQueue) jobOnQueue(job *ScannerJob) (bool, error) {
-
-	scannerJobs := append(queue.in_progress, queue.up_next...)
-
-	for _, scannerJob := range scannerJobs {
-		if scannerJob.ctx.GetAlbum().ID == job.ctx.GetAlbum().ID {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }
