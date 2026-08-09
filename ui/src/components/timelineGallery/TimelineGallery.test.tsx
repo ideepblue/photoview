@@ -1,5 +1,5 @@
 import { MockedProvider } from '@apollo/client/testing'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import React from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import TimelineGallery, { MY_TIMELINE_QUERY } from './TimelineGallery'
@@ -33,5 +33,10 @@ test('timeline with media', async () => {
   expect(screen.queryByLabelText('Show only favorites')).toBeInTheDocument()
 
   expect(await screen.findAllByRole('link')).toHaveLength(4)
-  expect(await screen.findAllByRole('img')).toHaveLength(5)
+  const mediaImages = await screen.findAllByRole('img')
+  expect(mediaImages).toHaveLength(5)
+
+  fireEvent.click(mediaImages[0])
+
+  expect(screen.getByTestId('present-swipe-current')).toBeInTheDocument()
 })

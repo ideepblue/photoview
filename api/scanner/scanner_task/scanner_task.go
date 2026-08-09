@@ -39,10 +39,19 @@ type TaskContext struct {
 	context.Context
 }
 
+type ScanOptions struct {
+	ForceRefresh bool
+}
+
 func NewTaskContext(parent context.Context, db *gorm.DB, album *models.Album, cache *scanner_cache.AlbumScannerCache) TaskContext {
+	return NewTaskContextWithOptions(parent, db, album, cache, ScanOptions{})
+}
+
+func NewTaskContextWithOptions(parent context.Context, db *gorm.DB, album *models.Album, cache *scanner_cache.AlbumScannerCache, options ScanOptions) TaskContext {
 	ctx := TaskContext{Context: parent}
 	ctx = ctx.WithValue(taskCtxKeyAlbum, album)
 	ctx = ctx.WithValue(taskCtxKeyAlbumCache, cache)
+	ctx = ctx.WithValue(taskCtxKeyScanOptions, options)
 	ctx = ctx.WithDB(db)
 
 	return ctx
@@ -51,9 +60,10 @@ func NewTaskContext(parent context.Context, db *gorm.DB, album *models.Album, ca
 type taskCtxKeyType string
 
 const (
-	taskCtxKeyAlbum      taskCtxKeyType = "task_album"
-	taskCtxKeyAlbumCache taskCtxKeyType = "task_album_cache"
-	taskCtxKeyDatabase   taskCtxKeyType = "task_database"
+	taskCtxKeyAlbum       taskCtxKeyType = "task_album"
+	taskCtxKeyAlbumCache  taskCtxKeyType = "task_album_cache"
+	taskCtxKeyDatabase    taskCtxKeyType = "task_database"
+	taskCtxKeyScanOptions taskCtxKeyType = "task_scan_options"
 )
 
 func (c TaskContext) GetAlbum() *models.Album {
@@ -66,6 +76,15 @@ func (c TaskContext) GetCache() *scanner_cache.AlbumScannerCache {
 
 func (c TaskContext) GetDB() *gorm.DB {
 	return c.Context.Value(taskCtxKeyDatabase).(*gorm.DB)
+}
+
+func (c TaskContext) GetScanOptions() ScanOptions {
+	options, ok := c.Context.Value(taskCtxKeyScanOptions).(ScanOptions)
+	if !ok {
+		return ScanOptions{}
+	}
+
+	return options
 }
 
 func (c TaskContext) DatabaseTransaction(transFunc func(ctx TaskContext) error, opts ...*sql.TxOptions) error {
@@ -87,4 +106,8 @@ func (c TaskContext) WithDB(db *gorm.DB) TaskContext {
 	}
 
 	return c.WithValue(taskCtxKeyDatabase, db.WithContext(c.Context))
+}
+
+func (c TaskContext) WithScanOptions(options ScanOptions) TaskContext {
+	return c.WithValue(taskCtxKeyScanOptions, options)
 }

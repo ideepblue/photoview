@@ -11,6 +11,7 @@ import useDelay from '../../hooks/useDelay'
 import { ReactComponent as GearIcon } from './icons/gear.svg'
 import { tailwindClassNames } from '../../helpers/utils'
 import { buttonStyles } from '../../primitives/form/Input'
+import { useTranslation } from 'react-i18next'
 
 export const BreadcrumbList = styled.ol<{ hideLastArrow?: boolean }>`
   &
@@ -26,7 +27,7 @@ export const BreadcrumbList = styled.ol<{ hideLastArrow?: boolean }>`
   }
 `
 
-const ALBUM_PATH_QUERY = gql`
+export const ALBUM_PATH_QUERY = gql`
   query albumPathQuery($id: ID!) {
     album(id: $id) {
       id
@@ -50,18 +51,20 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
   const [fetchPath, { data: pathData }] =
     useLazyQuery<albumPathQuery>(ALBUM_PATH_QUERY)
   const { updateSidebar } = useContext(SidebarContext)
+  const { t } = useTranslation()
+  const isAuthenticated = Boolean(authToken())
 
   useEffect(() => {
     if (!album) return
 
-    if (authToken() && disableLink == true) {
+    if (isAuthenticated && disableLink == true) {
       fetchPath({
         variables: {
           id: album.id,
         },
       })
     }
-  }, [album])
+  }, [album?.id, disableLink, fetchPath, isAuthenticated])
 
   const delay = useDelay(200, [album])
 
@@ -81,6 +84,46 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
   let title = <span>{album.title}</span>
 
   const path = pathData?.album.path || []
+  const parent = path[0]
+
+  let backNavigation: React.ReactNode = null
+  if (isAuthenticated && disableLink) {
+    if (pathData?.album) {
+      const backTarget = parent ? `/album/${parent.id}` : '/albums'
+      const backLabel = parent
+        ? t('album_navigation.back_to_parent', 'Back to parent album')
+        : t('album_navigation.back_to_albums', 'Back to albums')
+
+      backNavigation = (
+        <Link
+          to={backTarget}
+          aria-label={backLabel}
+          title={backLabel}
+          className={tailwindClassNames(
+            buttonStyles({}),
+            'h-11 w-11 mr-2 flex flex-shrink-0 items-center justify-center p-0'
+          )}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-6 w-6"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </Link>
+      )
+    } else {
+      backNavigation = (
+        <span className="h-11 w-11 mr-2 flex-shrink-0" aria-hidden="true" />
+      )
+    }
+  }
 
   const breadcrumbSections = path
     .slice()
@@ -96,8 +139,9 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
   }
 
   return (
-    <div className="flex mb-6 items-end h-14">
-      <div className="min-w-0">
+    <div className="flex mb-6 items-center min-h-[3.5rem]">
+      {backNavigation}
+      <div className="min-w-0 flex-1">
         <nav aria-label="Album breadcrumb">
           <BreadcrumbList>{breadcrumbSections}</BreadcrumbList>
         </nav>
@@ -107,7 +151,10 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
         <button
           title="Album options"
           aria-label="Album options"
-          className={tailwindClassNames(buttonStyles({}), 'px-2 py-2 ml-2')}
+          className={tailwindClassNames(
+            buttonStyles({}),
+            'px-2 py-2 ml-2 flex-shrink-0'
+          )}
           onClick={() => {
             updateSidebar(<AlbumSidebar albumId={album.id} />)
           }}

@@ -205,6 +205,46 @@ func TestAlbumCover(t *testing.T) {
 		assert.Equal(t, photos[4].ID, albumThumb.ID)
 	})
 
+	t.Run("Album change cover to media from a descendant album", func(t *testing.T) {
+		album, err := actions.SetAlbumCoverForAlbum(
+			db,
+			regularUser,
+			photos[2].ID,
+			rootAlbum.ID,
+		)
+		assert.NoError(t, err)
+		assert.Equal(t, rootAlbum.ID, album.ID)
+		assert.NotNil(t, album.CoverID)
+		assert.Equal(t, photos[2].ID, *album.CoverID)
+	})
+
+	t.Run("Album rejects cover media outside its subtree", func(t *testing.T) {
+		album, err := actions.SetAlbumCoverForAlbum(
+			db,
+			regularUser,
+			photos[4].ID,
+			children[0].ID,
+		)
+		assert.Nil(t, album)
+		assert.EqualError(t, err, "cover photo must belong to the album or one of its descendants")
+	})
+
+	t.Run("Album rejects cover changes from another user", func(t *testing.T) {
+		otherUser, err := models.RegisterUser(db, "user2", &userPass, false)
+		if !assert.NoError(t, err) {
+			return
+		}
+
+		album, err := actions.SetAlbumCoverForAlbum(
+			db,
+			otherUser,
+			photos[2].ID,
+			rootAlbum.ID,
+		)
+		assert.Nil(t, album)
+		assert.EqualError(t, err, "forbidden")
+	})
+
 }
 
 func TestAlbumsSingleRootExpand(t *testing.T) {

@@ -155,9 +155,10 @@ type ComplexityRoot struct {
 		ProtectShareToken           func(childComplexity int, token string, password *string) int
 		RecognizeUnlabeledFaces     func(childComplexity int) int
 		ResetAlbumCover             func(childComplexity int, albumID int) int
+		ScanAlbum                   func(childComplexity int, albumID int, recursive bool, forceRefresh bool) int
 		ScanAll                     func(childComplexity int) int
 		ScanUser                    func(childComplexity int, userID int) int
-		SetAlbumCover               func(childComplexity int, coverID int) int
+		SetAlbumCover               func(childComplexity int, coverID int, albumID *int) int
 		SetExpireShareToken         func(childComplexity int, token string, expire *time.Time) int
 		SetFaceGroupLabel           func(childComplexity int, faceGroupID int, label *string) int
 		SetPeriodicScanInterval     func(childComplexity int, interval int) int
@@ -309,7 +310,7 @@ type MediaResolver interface {
 }
 type MutationResolver interface {
 	ResetAlbumCover(ctx context.Context, albumID int) (*models.Album, error)
-	SetAlbumCover(ctx context.Context, coverID int) (*models.Album, error)
+	SetAlbumCover(ctx context.Context, coverID int, albumID *int) (*models.Album, error)
 	SetFaceGroupLabel(ctx context.Context, faceGroupID int, label *string) (*models.FaceGroup, error)
 	CombineFaceGroups(ctx context.Context, destinationFaceGroupID int, sourceFaceGroupIDs []int) (*models.FaceGroup, error)
 	MoveImageFaces(ctx context.Context, imageFaceIDs []int, destinationFaceGroupID int) (*models.FaceGroup, error)
@@ -318,6 +319,7 @@ type MutationResolver interface {
 	FavoriteMedia(ctx context.Context, mediaID int, favorite bool) (*models.Media, error)
 	ScanAll(ctx context.Context) (*models.ScannerResult, error)
 	ScanUser(ctx context.Context, userID int) (*models.ScannerResult, error)
+	ScanAlbum(ctx context.Context, albumID int, recursive bool, forceRefresh bool) (*models.ScannerResult, error)
 	SetPeriodicScanInterval(ctx context.Context, interval int) (int, error)
 	SetScannerConcurrentWorkers(ctx context.Context, workers int) (int, error)
 	ShareAlbum(ctx context.Context, albumID int, expire *time.Time, password *string, label *string) (*models.ShareToken, error)
@@ -929,6 +931,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ResetAlbumCover(childComplexity, args["albumID"].(int)), true
+	case "Mutation.scanAlbum":
+		if e.ComplexityRoot.Mutation.ScanAlbum == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_scanAlbum_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ScanAlbum(childComplexity, args["albumId"].(int), args["recursive"].(bool), args["forceRefresh"].(bool)), true
 	case "Mutation.scanAll":
 		if e.ComplexityRoot.Mutation.ScanAll == nil {
 			break
@@ -956,7 +969,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.SetAlbumCover(childComplexity, args["coverID"].(int)), true
+		return e.ComplexityRoot.Mutation.SetAlbumCover(childComplexity, args["coverID"].(int), args["albumID"].(*int)), true
 	case "Mutation.setExpireShareToken":
 		if e.ComplexityRoot.Mutation.SetExpireShareToken == nil {
 			break
@@ -2421,6 +2434,36 @@ func (ec *executionContext) field_Mutation_resetAlbumCover_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_scanAlbum_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "albumId",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNID2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["albumId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "recursive",
+		func(ctx context.Context, v any) (bool, error) {
+			return ec.unmarshalNBoolean2bool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["recursive"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "forceRefresh",
+		func(ctx context.Context, v any) (bool, error) {
+			return ec.unmarshalNBoolean2bool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["forceRefresh"] = arg2
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_scanUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -2446,6 +2489,14 @@ func (ec *executionContext) field_Mutation_setAlbumCover_args(ctx context.Contex
 		return nil, err
 	}
 	args["coverID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "albumID",
+		func(ctx context.Context, v any) (*int, error) {
+			return ec.unmarshalOID2ᚖint(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["albumID"] = arg1
 	return args, nil
 }
 
@@ -4798,7 +4849,7 @@ func (ec *executionContext) _Mutation_setAlbumCover(ctx context.Context, field g
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().SetAlbumCover(ctx, fc.Args["coverID"].(int))
+			return ec.Resolvers.Mutation().SetAlbumCover(ctx, fc.Args["coverID"].(int), fc.Args["albumID"].(*int))
 		},
 		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
 			directive0 := next
@@ -5271,6 +5322,63 @@ func (ec *executionContext) fieldContext_Mutation_scanUser(ctx context.Context, 
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_scanUser_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_scanAlbum(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_scanAlbum(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ScanAlbum(ctx, fc.Args["albumId"].(int), fc.Args["recursive"].(bool), fc.Args["forceRefresh"].(bool))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.IsAdmin == nil {
+					var zeroVal *models.ScannerResult
+					return zeroVal, errors.New("directive isAdmin is not implemented")
+				}
+				return ec.Directives.IsAdmin(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *models.ScannerResult) graphql.Marshaler {
+			return ec.marshalNScannerResult2ᚖgithubᚗcomᚋphotoviewᚋphotoviewᚋapiᚋgraphqlᚋmodelsᚐScannerResult(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_scanAlbum(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_ScannerResult(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_scanAlbum_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -10877,6 +10985,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "scanAlbum":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_scanAlbum(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "setPeriodicScanInterval":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setPeriodicScanInterval(ctx, field)
@@ -13254,6 +13369,24 @@ func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel as
 	_ = sel
 	res := graphql.MarshalFloatContext(*v)
 	return graphql.WrapContextMarshaler(ctx, res)
+}
+
+func (ec *executionContext) unmarshalOID2ᚖint(ctx context.Context, v any) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalIntID(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOID2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalIntID(*v)
+	return res
 }
 
 func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v any) (*int, error) {

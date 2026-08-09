@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { useSubscription, gql } from '@apollo/client'
 import { authToken } from '../../helpers/authentication'
 import { NotificationType } from '../../__generated__/globalTypes'
+import { SCANNER_COMPLETE_EVENT } from '../album/scannerEvents'
 
 const NOTIFICATION_SUBSCRIPTION = gql`
   subscription notificationSubscription {
@@ -20,6 +21,15 @@ const NOTIFICATION_SUBSCRIPTION = gql`
 `
 
 const messageTimeoutHandles = new Map<string, number>()
+
+export const dispatchScannerCompleteForNotification = (notification: {
+  key: string
+  positive?: boolean | null
+}) => {
+  if (notification.key === 'global-scanner-progress' && notification.positive) {
+    window.dispatchEvent(new Event(SCANNER_COMPLETE_EVENT))
+  }
+}
 
 export interface Message {
   key: string
@@ -73,6 +83,7 @@ const SubscriptionsHook = ({
     const newMessages = [...messages]
 
     const msg = data.notification
+    dispatchScannerCompleteForNotification(msg)
 
     if (msg.type == 'Close') {
       setMessages(messages => messages.filter(m => m.key != msg.key))

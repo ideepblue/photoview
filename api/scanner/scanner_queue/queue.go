@@ -238,27 +238,68 @@ func AddUserToQueue(user *models.User) error {
 	return nil
 }
 
+// AddAlbumToQueue discovers and queues one existing album, optionally including
+// albums below it. It does not run user-wide album cleanup.
+func AddAlbumToQueue(album *models.Album, recursive bool, forceRefresh bool) (int, error) {
+	albumCache := scanner_cache.MakeAlbumCache()
+	albums, scanErrors := scanner.FindAlbumsInSubtree(global_scanner_queue.db, album, recursive, albumCache)
+	if len(scanErrors) != 0 {
+		return 0, errors.Wrap(scanErrors[0], "discover selected album subtree")
+	}
+
+	options := scanner_task.ScanOptions{ForceRefresh: forceRefresh}
+	global_scanner_queue.mutex.Lock()
+	defer global_scanner_queue.mutex.Unlock()
+
+	for _, selectedAlbum := range albums {
+		job := NewScannerJob(scanner_task.NewTaskContextWithOptions(
+			context.Background(),
+			global_scanner_queue.db,
+			selectedAlbum,
+			albumCache,
+			options,
+		))
+		if err := global_scanner_queue.addJob(&job); err != nil {
+			return 0, err
+		}
+	}
+
+	return len(albums), nil
+}
+
 // Queue should be locked prior to calling this function
 func (queue *ScannerQueue) addJob(job *ScannerJob) error {
-	if exists, err := queue.jobOnQueue(job); exists || err != nil {
-		return err
+	albumID := job.ctx.GetAlbum().ID
+	requestedForce := job.ctx.GetScanOptions().ForceRefresh
+
+	for i := range queue.up_next {
+		queuedJob := &queue.up_next[i]
+		if queuedJob.ctx.GetAlbum().ID != albumID {
+			continue
+		}
+
+		if requestedForce && !queuedJob.ctx.GetScanOptions().ForceRefresh {
+			queuedJob.ctx = queuedJob.ctx.WithScanOptions(scanner_task.ScanOptions{ForceRefresh: true})
+		}
+
+		return nil
 	}
+
+	for i := range queue.in_progress {
+		runningJob := &queue.in_progress[i]
+		if runningJob.ctx.GetAlbum().ID != albumID {
+			continue
+		}
+
+		if !requestedForce || runningJob.ctx.GetScanOptions().ForceRefresh {
+			return nil
+		}
+
+		break
+	}
+
 	queue.up_next = append(queue.up_next, *job)
 	queue.notify()
 
 	return nil
-}
-
-// Queue should be locked prior to calling this function
-func (queue *ScannerQueue) jobOnQueue(job *ScannerJob) (bool, error) {
-
-	scannerJobs := append(queue.in_progress, queue.up_next...)
-
-	for _, scannerJob := range scannerJobs {
-		if scannerJob.ctx.GetAlbum().ID == job.ctx.GetAlbum().ID {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }

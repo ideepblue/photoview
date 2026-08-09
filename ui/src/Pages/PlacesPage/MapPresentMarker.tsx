@@ -129,7 +129,8 @@ const MapPresentMarker = ({
   if (markerMediaState.presenting) {
     return (
       <PresentView
-        activeMedia={markerMediaState.media[markerMediaState.activeIndex]}
+        media={markerMediaState.media}
+        activeIndex={markerMediaState.activeIndex}
         dispatchMedia={dispatchMarkerMedia}
         disableSaveCloseInHistory={true}
       />

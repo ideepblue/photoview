@@ -15,6 +15,39 @@
       "type": "Kind"
     }
   },
+  "album_layout": {
+    "album_badge": "Album",
+    "columns_2": "2 columns",
+    "columns_3": "3 columns",
+    "columns_4": "4 columns",
+    "label": "Album layout",
+    "list": "Compact list",
+    "photos": "Photos",
+    "subalbums": "Subalbums"
+  },
+  "album_navigation": {
+    "back_to_albums": "Back to albums",
+    "back_to_parent": "Back to parent album"
+  },
+  "album_scan": {
+    "action": "Scan and cache",
+    "complete": "Scan complete. Album refreshed.",
+    "confirm_description": "This rebuilds existing thumbnails in the selected album and every child album. It can take a long time.",
+    "confirm_title": "Rebuild thumbnails recursively?",
+    "continue": "Continue",
+    "current_only": "Current album only",
+    "force_hint": "Off by default. Normal scans keep healthy cached thumbnails.",
+    "force_refresh": "Force rebuild existing thumbnails",
+    "queued": "Scan queued successfully",
+    "recursive": "Current album and all child albums",
+    "refresh_failed": "Scan completed, but the album could not refresh: {{message}}",
+    "scanning": "Scanning and filling cache…",
+    "scope": "Scan scope",
+    "start": "Start scan",
+    "start_failed": "Could not start scan: {{message}}",
+    "starting": "Starting…",
+    "unknown_error": "The scanner rejected the request"
+  },
   "general": {
     "action": {
       "add": "Add",
@@ -124,6 +157,7 @@
     }
   },
   "photos_page": {
+    "open_details": "Open photo details",
     "title": "Timeline"
   },
   "places_page": {
@@ -258,8 +292,13 @@
           "title": "Converted videos"
         }
       },
+      "cover_set_for": "Cover set for “{{album}}”",
       "reset_cover": "Reset cover photo",
       "set_cover": "Set as album cover photo",
+      "set_cover_failed": "Could not set the cover. Please try again.",
+      "set_cover_for_current": "Set as cover for current album “{{album}}”",
+      "set_cover_for_parent": "Set as cover for parent album “{{album}}”",
+      "set_cover_help": "Choose whether this photo should cover the current album or its parent album.",
       "title_placeholder": "Album title"
     },
     "download": {

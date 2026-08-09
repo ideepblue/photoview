@@ -84,7 +84,7 @@ func (t ProcessVideoTask) ProcessMedia(ctx scanner_task.TaskContext, mediaData *
 		updatedURLs = append(updatedURLs, &mediaURL)
 	}
 
-	if videoWebURL == nil && !videoType.IsWebCompatible() {
+	if videoWebURL == nil && !videoType.IsWebCompatible() && !ctx.GetScanOptions().ForceRefresh {
 		webVideoName := fmt.Sprintf("web_video_%s_%s", path.Base(video.Path), utils.GenerateToken())
 		webVideoName = strings.ReplaceAll(webVideoName, ".", "_")
 		webVideoName = strings.ReplaceAll(webVideoName, " ", "_")
@@ -167,6 +167,25 @@ func (t ProcessVideoTask) ProcessMedia(ctx scanner_task.TaskContext, mediaData *
 		}
 
 		updatedURLs = append(updatedURLs, &thumbMediaURL)
+	} else if ctx.GetScanOptions().ForceRefresh {
+		videoThumbName := generateUniqueMediaNamePrefixed("video_thumb", video.Path, ".jpg")
+		thumbnail, err := replaceCachedThumbnail(
+			ctx.GetDB(),
+			videoThumbnailURL,
+			mediaCachePath,
+			videoThumbName,
+			func(outputPath string) (media_encoding.Dimension, error) {
+				if err := executable_worker.Ffmpeg.EncodeVideoThumbnail(video.Path, outputPath, probeData); err != nil {
+					return media_encoding.Dimension{}, err
+				}
+				return media_encoding.GetPhotoDimensions(outputPath)
+			},
+		)
+		if err != nil {
+			return []*models.MediaURL{}, errors.Wrapf(err, "force refreshing thumbnail for video (%s)", video.Title)
+		}
+
+		updatedURLs = append(updatedURLs, thumbnail)
 	} else {
 		// Verify that video thumbnail still exists in cache
 		thumbImagePath := path.Join(mediaCachePath, videoThumbnailURL.MediaName)

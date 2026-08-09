@@ -233,7 +233,7 @@ const SidebarContent = ({ media, hidePreview }: SidebarContentProps) => {
       <SidebarMediaDownload media={media} />
       <SidebarPhotoShare id={media.id} />
       <div className="mt-8">
-        <SidebarPhotoCover cover_id={media.id} />
+        <SidebarPhotoCover cover_id={media.id} album={media.album} />
       </div>
     </div>
   )

@@ -99,11 +99,19 @@ func (a *Album) Thumbnail(db *gorm.DB) (*Media, error) {
 		)
 		SELECT * FROM media
 		WHERE media.album_id IN (SELECT id FROM sub_albums)
-		ORDER BY media.id DESC
+		ORDER BY
+			CASE
+				WHEN media.album_id = ? AND (LOWER(media.title) = 'cover' OR LOWER(media.title) LIKE 'cover.%') THEN 0
+				WHEN media.album_id = ? AND LOWER(media.title) LIKE '%cover%' THEN 1
+				WHEN LOWER(media.title) = 'cover' OR LOWER(media.title) LIKE 'cover.%' THEN 2
+				WHEN LOWER(media.title) LIKE '%cover%' THEN 3
+				ELSE 4
+			END,
+			media.id DESC
 		LIMIT 1
 	`
 
-	if err := db.Raw(query, a.ID).Scan(&media).Error; err != nil {
+	if err := db.Raw(query, a.ID, a.ID, a.ID).Scan(&media).Error; err != nil {
 		return nil, err
 	}
 

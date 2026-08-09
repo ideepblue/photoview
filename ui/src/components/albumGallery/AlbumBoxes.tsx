@@ -1,6 +1,12 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { albumQuery_album_subAlbums } from '../../Pages/AlbumPage/__generated__/albumQuery'
 import { AlbumBox } from './AlbumBox'
+import {
+  MobileAlbumLayout,
+  readMobileAlbumLayout,
+  writeMobileAlbumLayout,
+} from './mobileAlbumLayout'
 
 type AlbumBoxesProps = {
   error?: Error
@@ -8,26 +14,221 @@ type AlbumBoxesProps = {
   getCustomLink?(albumID: string): string
 }
 
+const mobileAlbumLayoutClass: Record<MobileAlbumLayout, string> = {
+  list: 'mobile-album-list',
+  'columns-2': 'mobile-album-lanes mobile-album-lanes-2',
+  'columns-3': 'mobile-album-lanes mobile-album-lanes-3',
+  'columns-4': 'mobile-album-lanes mobile-album-lanes-4',
+}
+
+const MOBILE_ALBUM_BREAKPOINT = 480
+// Layout uses mx-3 on both sides below the mobile breakpoint.
+const MOBILE_ALBUM_CONTENT_HORIZONTAL_MARGIN = 24
+// Cover title line (24px) + mt-1 (4px) + mb-3 (12px).
+const MOBILE_ALBUM_CARD_CHROME_HEIGHT = 40
+const MOBILE_ALBUM_COLUMN_GAP: Record<number, number> = {
+  2: 8,
+  3: 6,
+  4: 4,
+}
+
+const mobileAlbumViewportWidth = () => {
+  if (
+    typeof window === 'undefined' ||
+    window.innerWidth >= MOBILE_ALBUM_BREAKPOINT
+  ) {
+    return null
+  }
+
+  return window.innerWidth
+}
+
+const mobileAlbumColumnCount = (layout: MobileAlbumLayout) => {
+  switch (layout) {
+    case 'columns-2':
+      return 2
+    case 'columns-3':
+      return 3
+    case 'columns-4':
+      return 4
+    default:
+      return 0
+  }
+}
+
+const validDimension = (value?: number | null) =>
+  value && value > 0 ? value : undefined
+
+const estimateAlbumCardHeight = (
+  album: albumQuery_album_subAlbums | undefined,
+  laneWidth: number
+) => {
+  const thumbnail = album?.thumbnail?.thumbnail
+  const width = validDimension(thumbnail?.width) || 3
+  const height = validDimension(thumbnail?.height) || 4
+  const titleAndSpacing = album ? MOBILE_ALBUM_CARD_CHROME_HEIGHT : 12
+
+  return laneWidth * (height / width) + titleAndSpacing
+}
+
 const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
+  const { t } = useTranslation()
+  const [layout, setLayout] = useState<MobileAlbumLayout>(() =>
+    readMobileAlbumLayout()
+  )
+  const [mobileViewportWidth, setMobileViewportWidth] = useState(
+    mobileAlbumViewportWidth
+  )
+
+  useEffect(() => {
+    const updateViewport = () =>
+      setMobileViewportWidth(mobileAlbumViewportWidth())
+
+    window.addEventListener('resize', updateViewport)
+    return () => window.removeEventListener('resize', updateViewport)
+  }, [])
+
   if (error) return <div>Error {error.message}</div>
 
-  let albumElements = []
+  let albumCards: Array<{
+    album?: albumQuery_album_subAlbums
+    element: React.ReactElement
+  }> = []
 
   if (albums !== undefined) {
-    albumElements = albums.map(album => (
-      <AlbumBox
-        key={album.id}
-        album={album}
-        customLink={getCustomLink ? getCustomLink(album.id) : undefined}
-      />
-    ))
+    albumCards = albums.map(album => ({
+      album,
+      element: (
+        <AlbumBox
+          key={album.id}
+          album={album}
+          layout={layout}
+          customLink={getCustomLink ? getCustomLink(album.id) : undefined}
+        />
+      ),
+    }))
   } else {
     for (let i = 0; i < 4; i++) {
-      albumElements.push(<AlbumBox key={i} />)
+      albumCards.push({
+        element: <AlbumBox key={i} layout={layout} />,
+      })
     }
   }
 
-  return <div className="-mx-3 my-6">{albumElements}</div>
+  const selectLayout = (nextLayout: MobileAlbumLayout) => {
+    setLayout(nextLayout)
+    writeMobileAlbumLayout(nextLayout)
+  }
+
+  const layoutOptions: Array<{
+    value: MobileAlbumLayout
+    label: string
+    shortLabel: string
+  }> = [
+    {
+      value: 'list',
+      label: t('album_layout.list', 'Compact list'),
+      shortLabel: '≡',
+    },
+    {
+      value: 'columns-2',
+      label: t('album_layout.columns_2', '2 columns'),
+      shortLabel: '2',
+    },
+    {
+      value: 'columns-3',
+      label: t('album_layout.columns_3', '3 columns'),
+      shortLabel: '3',
+    },
+    {
+      value: 'columns-4',
+      label: t('album_layout.columns_4', '4 columns'),
+      shortLabel: '4',
+    },
+  ]
+
+  const columnCount =
+    mobileViewportWidth === null ? 0 : mobileAlbumColumnCount(layout)
+  const albumColumns = columnCount
+    ? Array.from({ length: columnCount }, () => [] as React.ReactElement[])
+    : null
+
+  if (albumColumns) {
+    const gap = MOBILE_ALBUM_COLUMN_GAP[columnCount] || 0
+    const laneWidth = Math.max(
+      (mobileViewportWidth! -
+        MOBILE_ALBUM_CONTENT_HORIZONTAL_MARGIN -
+        gap * (columnCount - 1)) /
+        columnCount,
+      1
+    )
+    const laneHeights = Array.from({ length: columnCount }, () => 0)
+
+    albumCards.forEach(({ album, element }) => {
+      let shortestLane = 0
+
+      for (let lane = 1; lane < columnCount; lane++) {
+        if (laneHeights[lane] < laneHeights[shortestLane]) {
+          shortestLane = lane
+        }
+      }
+
+      albumColumns[shortestLane].push(element)
+      laneHeights[shortestLane] += estimateAlbumCardHeight(album, laneWidth)
+    })
+  }
+
+  const albumElements = albumCards.map(card => card.element)
+
+  return (
+    <>
+      <div
+        className="mb-2 flex justify-end xs:hidden"
+        role="group"
+        aria-label={t('album_layout.label', 'Album layout')}
+      >
+        <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 shadow-sm dark:border-dark-border2 dark:bg-dark-bg2">
+          {layoutOptions.map(option => {
+            const selected = layout === option.value
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                aria-label={option.label}
+                aria-pressed={selected}
+                className={`min-w-[36px] rounded-md px-2 py-1 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300 ${
+                  selected
+                    ? 'bg-white text-gray-900 shadow dark:bg-dark-bg dark:text-white'
+                    : 'text-gray-500 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white'
+                }`}
+                onClick={() => selectLayout(option.value)}
+              >
+                <span aria-hidden="true">{option.shortLabel}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      <div
+        data-testid="album-boxes"
+        data-mobile-layout={layout}
+        className={`${mobileAlbumLayoutClass[layout]} my-4 xs:my-6 xs:block xs:-mx-3`}
+      >
+        {albumColumns
+          ? albumColumns.map((column, index) => (
+              <div
+                key={index}
+                data-testid="album-lane"
+                className="mobile-album-lane"
+              >
+                {column}
+              </div>
+            ))
+          : albumElements}
+      </div>
+    </>
+  )
 }
 
 export default AlbumBoxes

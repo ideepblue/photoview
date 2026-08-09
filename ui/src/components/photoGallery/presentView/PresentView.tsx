@@ -1,9 +1,11 @@
-import React, { useEffect } from 'react'
+import React, { useContext, useEffect } from 'react'
 import styled, { createGlobalStyle } from 'styled-components'
 import PresentNavigationOverlay from './PresentNavigationOverlay'
-import PresentMedia from './PresentMedia'
+import PresentSwipeTrack from './PresentSwipeTrack'
 import { closePresentModeAction, GalleryAction } from '../mediaGalleryReducer'
-import { MediaGalleryFields } from '../__generated__/MediaGalleryFields'
+import { PresentMediaFields } from './PresentMedia'
+import { SidebarContext } from '../../sidebar/Sidebar'
+import MediaSidebar from '../../sidebar/MediaSidebar/MediaSidebar'
 
 const StyledContainer = styled.div`
   position: fixed;
@@ -17,7 +19,7 @@ const StyledContainer = styled.div`
 `
 
 const PreventScroll = createGlobalStyle`
-  * {
+  body {
     overflow: hidden !important;
   }
 `
@@ -25,7 +27,9 @@ const PreventScroll = createGlobalStyle`
 type PresentViewProps = {
   className?: string
   imageLoaded?(): void
-  activeMedia: MediaGalleryFields
+  media: PresentMediaFields[]
+  activeIndex: number
+  circular?: boolean
   dispatchMedia: React.Dispatch<GalleryAction>
   disableSaveCloseInHistory?: boolean
 }
@@ -33,10 +37,14 @@ type PresentViewProps = {
 const PresentView = ({
   className,
   imageLoaded,
-  activeMedia,
+  media,
+  activeIndex,
+  circular = true,
   dispatchMedia,
   disableSaveCloseInHistory,
 }: PresentViewProps) => {
+  const { updateSidebar } = useContext(SidebarContext)
+
   useEffect(() => {
     const keyDownEvent = (e: KeyboardEvent) => {
       if (e.key == 'ArrowRight') {
@@ -67,14 +75,42 @@ const PresentView = ({
     }
   })
 
+  const currentMedia = media[activeIndex]
+  if (currentMedia === undefined) return null
+
+  const previousMedia =
+    activeIndex > 0
+      ? media[activeIndex - 1]
+      : circular
+      ? media[media.length - 1]
+      : null
+  const nextMedia =
+    activeIndex < media.length - 1
+      ? media[activeIndex + 1]
+      : circular
+      ? media[0]
+      : null
+
   return (
     <StyledContainer className={className}>
       <PreventScroll />
       <PresentNavigationOverlay
         dispatchMedia={dispatchMedia}
         disableSaveCloseInHistory
+        onShowInfo={() => {
+          updateSidebar(<MediaSidebar media={currentMedia} hidePreview />)
+        }}
       >
-        <PresentMedia media={activeMedia} imageLoaded={imageLoaded} />
+        {showControls => (
+          <PresentSwipeTrack
+            currentMedia={currentMedia}
+            previousMedia={previousMedia}
+            nextMedia={nextMedia}
+            imageLoaded={imageLoaded}
+            onNavigate={type => dispatchMedia({ type })}
+            onTap={showControls}
+          />
+        )}
       </PresentNavigationOverlay>
     </StyledContainer>
   )

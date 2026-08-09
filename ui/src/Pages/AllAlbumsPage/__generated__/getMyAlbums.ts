@@ -15,6 +15,14 @@ export interface getMyAlbums_myAlbums_thumbnail_thumbnail {
    * URL for previewing the image
    */
   url: string;
+  /**
+   * Width of the image in pixels
+   */
+  width: number;
+  /**
+   * Height of the image in pixels
+   */
+  height: number;
 }
 
 export interface getMyAlbums_myAlbums_thumbnail {

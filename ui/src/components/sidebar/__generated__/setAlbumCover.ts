@@ -42,4 +42,5 @@ export interface setAlbumCover {
 
 export interface setAlbumCoverVariables {
   coverID: string;
+  albumID?: string | null;
 }

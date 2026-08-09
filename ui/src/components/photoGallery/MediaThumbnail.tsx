@@ -1,5 +1,6 @@
 import React from 'react'
 import styled from 'styled-components'
+import { useTranslation } from 'react-i18next'
 import { ProtectedImage } from './ProtectedMedia'
 import { MediaType } from '../../__generated__/globalTypes'
 import { ReactComponent as VideoThumbnailIconSVG } from './icons/videoThumbnailIcon.svg'
@@ -102,11 +103,12 @@ const FavoriteIcon = ({ favorite, onClick }: FavoriteIconProps) => {
 }
 
 type SidebarIconProps = {
+  label: string
   onClick(e: React.MouseEvent<HTMLButtonElement, MouseEvent>): void
 }
 
-const SidebarIcon = ({ onClick }: SidebarIconProps) => (
-  <SidebarIconWrapper onClick={onClick}>
+const SidebarIcon = ({ label, onClick }: SidebarIconProps) => (
+  <SidebarIconWrapper aria-label={label} title={label} onClick={onClick}>
     <svg
       width="20px"
       height="20px"
@@ -127,6 +129,11 @@ const SidebarIconWrapper = styled(HoverIcon)`
   position: absolute;
   top: 0;
   right: 0;
+
+  @media (hover: none), (max-width: 1000px) {
+    opacity: 0.9;
+    background-color: rgba(0, 0, 0, 0.35);
+  }
 `
 
 const VideoThumbnailIcon = styled(VideoThumbnailIconSVG)`
@@ -151,6 +158,8 @@ export const MediaThumbnail = ({
   clickPresent,
   clickFavorite,
 }: MediaThumbnailProps) => {
+  const { t } = useTranslation()
+
   let heartIcon = null
   if (media.favorite !== undefined) {
     heartIcon = (
@@ -199,6 +208,7 @@ export const MediaThumbnail = ({
       <PhotoOverlay active={active}>
         {videoIcon}
         <SidebarIcon
+          label={t('photos_page.open_details', 'Open photo details')}
           onClick={e => {
             e.stopPropagation()
             selectImage()

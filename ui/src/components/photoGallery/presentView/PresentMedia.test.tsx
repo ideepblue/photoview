@@ -24,11 +24,16 @@ test('render present image', () => {
 
   render(<PresentMedia media={media} />)
 
-  expect(screen.getByTestId('present-img-thumbnail')).toHaveAttribute(
+  const thumbnail = screen.getByTestId('present-img-thumbnail')
+  const highRes = screen.getByTestId('present-img-highres')
+
+  expect(thumbnail).toHaveAttribute(
     'src',
     'http://localhost:3000/sample_image.jpg'
   )
-  expect(screen.getByTestId('present-img-highres')).toHaveStyle({
+  expect(thumbnail).toHaveAttribute('draggable', 'false')
+  expect(highRes).toHaveAttribute('draggable', 'false')
+  expect(highRes).toHaveStyle({
     display: 'none',
   })
 })

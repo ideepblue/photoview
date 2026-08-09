@@ -5,6 +5,11 @@ import { exhaustiveCheck } from '../../../helpers/utils'
 import { ProtectedImage, ProtectedVideo } from '../ProtectedMedia'
 import { MediaGalleryFields } from '../__generated__/MediaGalleryFields'
 
+export type PresentMediaFields = Pick<
+  MediaGalleryFields,
+  'id' | 'type' | 'thumbnail' | 'highRes' | 'videoWeb'
+>
+
 const StyledPhoto = styled(ProtectedImage)`
   position: absolute;
   top: 0;
@@ -24,7 +29,7 @@ const StyledVideo = styled(ProtectedVideo)`
 `
 
 type PresentMediaProps = {
-  media: MediaGalleryFields
+  media: PresentMediaFields
   imageLoaded?(): void
 }
 
@@ -40,12 +45,14 @@ const PresentMedia = ({
           <StyledPhoto
             key={`${media.id}-thumb`}
             src={media.thumbnail?.url}
+            draggable={false}
             data-testid="present-img-thumbnail"
           />
           <StyledPhoto
             key={`${media.id}-highres`}
             style={{ display: 'none' }}
             src={media.highRes?.url}
+            draggable={false}
             data-testid="present-img-highres"
             onLoad={e => {
               const elem = e.target as HTMLImageElement
