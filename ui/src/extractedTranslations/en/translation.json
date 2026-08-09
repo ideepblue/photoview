@@ -25,6 +25,10 @@
     "photos": "Photos",
     "subalbums": "Subalbums"
   },
+  "album_navigation": {
+    "back_to_albums": "Back to albums",
+    "back_to_parent": "Back to parent album"
+  },
   "general": {
     "action": {
       "add": "Add",

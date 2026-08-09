@@ -25,6 +25,10 @@
     "photos": "照片",
     "subalbums": "子相册"
   },
+  "album_navigation": {
+    "back_to_albums": "返回相册首页",
+    "back_to_parent": "返回上一级相册"
+  },
   "general": {
     "action": {
       "add": "加入",
