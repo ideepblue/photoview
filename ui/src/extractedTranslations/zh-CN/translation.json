@@ -29,6 +29,25 @@
     "back_to_albums": "返回相册首页",
     "back_to_parent": "返回上一级相册"
   },
+  "album_scan": {
+    "action": "扫描与补缓存",
+    "complete": "扫描完成，相册已刷新。",
+    "confirm_description": "这会重建所选相册及全部子相册中已有的缩略图，可能需要较长时间。",
+    "confirm_title": "递归重建缩略图？",
+    "continue": "继续",
+    "current_only": "仅当前相册",
+    "force_hint": "默认关闭；普通扫描会保留健康的已有缩略图。",
+    "force_refresh": "强制重建已有缩略图",
+    "queued": "扫描任务已加入队列",
+    "recursive": "当前相册及所有子相册",
+    "refresh_failed": "扫描已完成，但相册刷新失败：{{message}}",
+    "scanning": "正在扫描并补齐缓存…",
+    "scope": "扫描范围",
+    "start": "开始扫描",
+    "start_failed": "无法开始扫描：{{message}}",
+    "starting": "正在启动…",
+    "unknown_error": "扫描器拒绝了本次请求"
+  },
   "general": {
     "action": {
       "add": "加入",

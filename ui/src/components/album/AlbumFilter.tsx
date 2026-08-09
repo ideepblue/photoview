@@ -10,6 +10,7 @@ import { ReactComponent as DirectionIcon } from './icons/direction-arrow.svg'
 
 import Dropdown from '../../primitives/form/Dropdown'
 import classNames from 'classnames'
+import AlbumScanControl from './AlbumScanControl'
 
 export type SortingOptionValue = 'date_shot' | 'updated_at' | 'title' | 'type'
 export type SortingOption = { value: SortingOptionValue; label: string }
@@ -134,6 +135,8 @@ type AlbumFilterProps = {
   ordering?: MediaOrdering
   setOrdering?: SetOrderingFn
   sortingOptions?: SortingOption[]
+  albumId?: string
+  onAlbumScanComplete?(): Promise<unknown> | unknown
 }
 
 const AlbumFilter = ({
@@ -142,6 +145,8 @@ const AlbumFilter = ({
   setOrdering,
   ordering,
   sortingOptions,
+  albumId,
+  onAlbumScanComplete,
 }: AlbumFilterProps) => {
   return (
     <div className="flex items-end gap-4 flex-wrap mb-4">
@@ -156,6 +161,12 @@ const AlbumFilter = ({
         <FavoritesCheckbox
           onlyFavorites={onlyFavorites}
           setOnlyFavorites={setOnlyFavorites}
+        />
+      )}
+      {albumId && onAlbumScanComplete && (
+        <AlbumScanControl
+          albumId={albumId}
+          onScanComplete={onAlbumScanComplete}
         />
       )}
     </div>

@@ -63,6 +63,7 @@ type AlbumGalleryProps = {
   ordering?: MediaOrdering
   onlyFavorites?: boolean
   onFavorite?(): void
+  onAlbumScanComplete?(): Promise<unknown> | unknown
 }
 
 const AlbumGallery = React.forwardRef(
@@ -76,6 +77,7 @@ const AlbumGallery = React.forwardRef(
       setOrdering,
       ordering,
       onlyFavorites = false,
+      onAlbumScanComplete,
     }: AlbumGalleryProps,
     ref: React.ForwardedRef<HTMLDivElement>
   ) => {
@@ -134,6 +136,8 @@ const AlbumGallery = React.forwardRef(
             setOnlyFavorites={setOnlyFavorites}
             setOrdering={setOrdering}
             ordering={ordering}
+            albumId={album?.id}
+            onAlbumScanComplete={onAlbumScanComplete}
           />
         )}
         <AlbumTitle album={album} disableLink />

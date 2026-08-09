@@ -108,6 +108,7 @@ function AlbumPage() {
         showFilter
         setOrdering={orderParams.setOrdering}
         ordering={orderParams}
+        onAlbumScanComplete={() => refetch()}
       />
       <PaginateLoader
         active={!finishedLoadingMore && !loading}
