@@ -101,7 +101,7 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
           title={backLabel}
           className={tailwindClassNames(
             buttonStyles({}),
-            'h-11 w-11 mr-2 flex flex-shrink-0 items-center justify-center p-0'
+            'h-11 w-11 mr-2 flex flex-shrink-0 items-center justify-center px-0 py-0'
           )}
         >
           <svg
