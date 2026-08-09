@@ -107,6 +107,22 @@ func (t ProcessPhotoTask) ProcessMedia(ctx scanner_task.TaskContext, mediaData *
 		}
 
 		updatedURLs = append(updatedURLs, thumbnail)
+	} else if ctx.GetScanOptions().ForceRefresh {
+		thumbnailName := generateUniqueMediaNamePrefixed("thumbnail", photo.Path, ".jpg")
+		thumbnail, err := replaceCachedThumbnail(
+			ctx.GetDB(),
+			thumbURL,
+			mediaCachePath,
+			thumbnailName,
+			func(outputPath string) (media_encoding.Dimension, error) {
+				return media_encoding.EncodeThumbnail(ctx.GetDB(), baseImagePath, outputPath)
+			},
+		)
+		if err != nil {
+			return []*models.MediaURL{}, errors.Wrap(err, "force refreshing photo thumbnail")
+		}
+
+		updatedURLs = append(updatedURLs, thumbnail)
 	} else {
 		// Verify that thumbnail photo still exists in cache
 		thumbPath := path.Join(mediaCachePath, thumbURL.MediaName)
