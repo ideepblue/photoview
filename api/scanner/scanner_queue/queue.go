@@ -238,6 +238,35 @@ func AddUserToQueue(user *models.User) error {
 	return nil
 }
 
+// AddAlbumToQueue discovers and queues one existing album, optionally including
+// albums below it. It does not run user-wide album cleanup.
+func AddAlbumToQueue(album *models.Album, recursive bool, forceRefresh bool) (int, error) {
+	albumCache := scanner_cache.MakeAlbumCache()
+	albums, scanErrors := scanner.FindAlbumsInSubtree(global_scanner_queue.db, album, recursive, albumCache)
+	if len(scanErrors) != 0 {
+		return 0, errors.Wrap(scanErrors[0], "discover selected album subtree")
+	}
+
+	options := scanner_task.ScanOptions{ForceRefresh: forceRefresh}
+	global_scanner_queue.mutex.Lock()
+	defer global_scanner_queue.mutex.Unlock()
+
+	for _, selectedAlbum := range albums {
+		job := NewScannerJob(scanner_task.NewTaskContextWithOptions(
+			context.Background(),
+			global_scanner_queue.db,
+			selectedAlbum,
+			albumCache,
+			options,
+		))
+		if err := global_scanner_queue.addJob(&job); err != nil {
+			return 0, err
+		}
+	}
+
+	return len(albums), nil
+}
+
 // Queue should be locked prior to calling this function
 func (queue *ScannerQueue) addJob(job *ScannerJob) error {
 	albumID := job.ctx.GetAlbum().ID

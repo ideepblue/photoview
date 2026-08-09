@@ -3,11 +3,16 @@ package scanner_queue
 import (
 	"context"
 	"flag"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/photoview/photoview/api/graphql/models"
+	"github.com/photoview/photoview/api/scanner/externaltools/exif"
 	"github.com/photoview/photoview/api/scanner/scanner_cache"
 	"github.com/photoview/photoview/api/scanner/scanner_task"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
 
 var _ = flag.Bool("database", false, "run database integration tests")
@@ -18,6 +23,69 @@ func makeAlbumWithID(id int) *models.Album {
 	album.ID = id
 
 	return &album
+}
+
+func TestAddAlbumToQueueUsesScopedDiscoveryAndOptions(t *testing.T) {
+	exifCleanup, err := exif.Initialize()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer exifCleanup()
+
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "queue.db")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&models.User{}, &models.Album{}, &models.UserAlbums{}); err != nil {
+		t.Fatal(err)
+	}
+
+	rootPath := filepath.Join(t.TempDir(), "root")
+	childPath := filepath.Join(rootPath, "child")
+	if err := os.MkdirAll(childPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	photo, err := os.ReadFile("../test_media/real_media/standalone_jpg.jpg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(childPath, "photo.jpg"), photo, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	root := &models.Album{Title: "root", Path: rootPath}
+	if err := db.Create(root).Error; err != nil {
+		t.Fatal(err)
+	}
+	child := &models.Album{Title: "child", Path: childPath, ParentAlbumID: &root.ID}
+	if err := db.Create(child).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	previousQueue := global_scanner_queue
+	t.Cleanup(func() { global_scanner_queue = previousQueue })
+	global_scanner_queue = ScannerQueue{
+		idle_chan:   make(chan bool, 1),
+		in_progress: make([]ScannerJob, 0),
+		up_next:     make([]ScannerJob, 0),
+		db:          db,
+	}
+
+	queued, err := AddAlbumToQueue(root, true, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if queued != 2 {
+		t.Fatalf("queued %d albums, want 2", queued)
+	}
+	if len(global_scanner_queue.up_next) != 2 {
+		t.Fatalf("queue contains %d jobs, want 2", len(global_scanner_queue.up_next))
+	}
+	for _, job := range global_scanner_queue.up_next {
+		if !job.ctx.GetScanOptions().ForceRefresh {
+			t.Fatalf("album %d did not inherit force-refresh options", job.ctx.GetAlbum().ID)
+		}
+	}
 }
 
 func makeScannerJob(albumID int, forceRefresh bool) ScannerJob {

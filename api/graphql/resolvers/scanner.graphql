@@ -12,6 +12,13 @@ extend type Mutation {
   "Scan a single user for new media"
   scanUser(userId: ID!): ScannerResult! @isAdmin
 
+  "Scan one album, optionally including child albums and rebuilding thumbnails"
+  scanAlbum(
+    albumId: ID!
+    recursive: Boolean!
+    forceRefresh: Boolean!
+  ): ScannerResult! @isAdmin
+
   """
   Set how often, in seconds, the server should automatically scan for new media,
   a value of 0 will disable periodic scans

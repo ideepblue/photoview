@@ -51,6 +51,26 @@ func (r *mutationResolver) ScanUser(ctx context.Context, userID int) (*models.Sc
 	}, nil
 }
 
+// ScanAlbum is the resolver for the scanAlbum field.
+func (r *mutationResolver) ScanAlbum(ctx context.Context, albumID int, recursive bool, forceRefresh bool) (*models.ScannerResult, error) {
+	var album models.Album
+	if err := r.DB(ctx).First(&album, albumID).Error; err != nil {
+		return nil, fmt.Errorf("get album from database: %w", err)
+	}
+
+	queued, err := scanner_queue.AddAlbumToQueue(&album, recursive, forceRefresh)
+	if err != nil {
+		return nil, err
+	}
+
+	message := fmt.Sprintf("Queued %d album(s) for scanning", queued)
+	return &models.ScannerResult{
+		Finished: false,
+		Success:  true,
+		Message:  &message,
+	}, nil
+}
+
 // SetPeriodicScanInterval is the resolver for the setPeriodicScanInterval field.
 func (r *mutationResolver) SetPeriodicScanInterval(ctx context.Context, interval int) (int, error) {
 	db := r.DB(ctx)
