@@ -14,6 +14,12 @@ You configure Photoview to look for photos and videos within a directory on your
 
 When your media has been scanned, they show up on the website, organised in the same way as on the filesystem.
 
+> [!NOTE]
+> This is ideepblue's customization fork. See [CUSTOMIZATION.md](./CUSTOMIZATION.md)
+> for the added mobile gallery, cover, navigation, and cache-scan behavior, plus
+> the branch and upstream-sync workflow. The rest of this README remains the
+> upstream Photoview documentation.
+
 > If you have questions regarding setup or development,
 feel free to join the Discord server [https://discord.gg/jQ392948u9](https://discord.gg/jQ392948u9)
 
