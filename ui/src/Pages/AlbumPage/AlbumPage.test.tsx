@@ -6,7 +6,7 @@ import AlbumPage from './AlbumPage'
 
 vi.mock('../../hooks/useScrollPagination')
 
-test('AlbumPage renders', () => {
+test('AlbumPage defaults to title in ascending order', () => {
   render(
     <MockedProvider mocks={[]}>
       <MemoryRouter initialEntries={['/album/1']}>
@@ -18,7 +18,8 @@ test('AlbumPage renders', () => {
   )
 
   expect(screen.getByText('Sort')).toBeInTheDocument()
-  expect(screen.getByLabelText('Sort direction')).toBeInTheDocument()
+  expect(screen.getByRole('combobox', { name: 'Sort' })).toHaveValue('title')
+  expect(screen.getByLabelText('Sort direction')).toHaveTextContent('Ascending')
 
   screen.debug()
 })
