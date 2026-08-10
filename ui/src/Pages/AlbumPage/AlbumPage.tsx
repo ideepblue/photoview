@@ -41,7 +41,7 @@ function AlbumPage() {
   const { t } = useTranslation()
 
   const urlParams = useURLParameters()
-  const orderParams = useOrderingParams(urlParams)
+  const orderParams = useOrderingParams(urlParams, 'title')
 
   const onlyFavorites = urlParams.getParam('favorites') == '1' ? true : false
   const setOnlyFavorites = (favorites: boolean) =>
