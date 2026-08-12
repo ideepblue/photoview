@@ -6,9 +6,12 @@ follow the upstream `CONTRIBUTING.md` conventions for the affected code.
 
 ## Git workflow
 
-- `origin` is `ideepblue/photoview`; `upstream` is `photoview/photoview`.
+- `origin` is `ideepblue/photoview`. A fresh submodule checkout has no
+  `upstream`; add `https://github.com/photoview/photoview.git` before syncing
+  official changes.
 - `main` is the long-lived customized integration branch.
-- Local `master` tracks `upstream/master` and must remain free of custom commits.
+- Local `master`, when created, tracks `upstream/master` and must remain free of
+  custom commits.
 - Start each change from `main` on `feature/<name>`.
 - Verify the feature branch before merging it into `main` with
   `git merge --no-ff`.
@@ -27,8 +30,9 @@ follow the upstream `CONTRIBUTING.md` conventions for the affected code.
   queries.
 - Do not add private hostnames, LAN addresses, credentials, media paths,
   database/cache data, production Compose files, or deployment evidence here.
-- A deployment patch stack is a reproducible release artifact, not a second
-  source tree. Compare its resulting Git tree with the accepted source commit.
+- The private operations repository consumes this fork as a Git submodule and
+  builds directly from an accepted source commit. Do not recreate a deployment
+  patch stack or duplicate the source tree there.
 
 ## Useful checks
 

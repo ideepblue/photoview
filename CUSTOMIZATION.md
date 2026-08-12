@@ -1,10 +1,10 @@
 # ideepblue PhotoView customization
 
 This fork keeps a small set of gallery-navigation and album-management changes
-on top of the official PhotoView `master` branch. The modified source in this
-repository is the canonical implementation; deployment repositories may export
-reproducible patches from an accepted source commit, but those patches are not
-the development source of truth.
+on top of the official PhotoView `master` branch. This repository is the
+canonical implementation. The private operations repository consumes an
+accepted commit through a Git submodule and builds directly from this source
+tree; it does not maintain a second checkout or deployment patch stack.
 
 ## User-visible differences
 
@@ -83,9 +83,9 @@ npm run build -- --base=/
 
 Run `npm run lint` when the touched area has a clean lint baseline; at minimum,
 lint and format every changed UI file. API/scanner changes must also run the
-focused Go packages and the relevant database-backed integration tests. A
-deployment patch stack must be replayed from its pinned official commit and its
-resulting Git tree compared with the accepted source commit before release.
+focused Go packages and the relevant database-backed integration tests. Before
+release, record the accepted commit and ensure the operations repository's
+submodule pointer identifies that exact revision.
 
 ## Release boundary and license
 
