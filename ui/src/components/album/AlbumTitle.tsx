@@ -27,6 +27,49 @@ export const BreadcrumbList = styled.ol<{ hideLastArrow?: boolean }>`
   }
 `
 
+const MobileBackNavigation = styled(Link)`
+  position: fixed;
+  z-index: 29;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem);
+  left: 50%;
+  display: flex;
+  width: 52px;
+  height: 52px;
+  transform: translateX(-50%);
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+  background: rgba(239, 93, 97, 0.94);
+  box-shadow: 0 8px 24px rgba(34, 20, 22, 0.28);
+  color: white;
+  backdrop-filter: blur(10px);
+
+  &:focus-visible {
+    outline: 3px solid rgba(96, 165, 250, 0.75);
+    outline-offset: 3px;
+  }
+
+  @media (min-width: 1024px) {
+    display: none;
+  }
+`
+
+const BackIcon = () => (
+  <svg
+    viewBox="0 0 24 24"
+    className="h-6 w-6"
+    aria-hidden="true"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M15 18l-6-6 6-6" />
+  </svg>
+)
+
 export const ALBUM_PATH_QUERY = gql`
   query albumPathQuery($id: ID!) {
     album(id: $id) {
@@ -87,12 +130,22 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
   const parent = path[0]
 
   let backNavigation: React.ReactNode = null
+  let mobileBackNavigation: React.ReactNode = null
   if (isAuthenticated && disableLink) {
     if (pathData?.album) {
       const backTarget = parent ? `/album/${parent.id}` : '/albums'
       const backLabel = parent
         ? t('album_navigation.back_to_parent', 'Back to parent album')
         : t('album_navigation.back_to_albums', 'Back to albums')
+      const mobileBackLabel = parent
+        ? t(
+            'album_navigation.mobile_back_to_parent',
+            'Back to parent album from bottom'
+          )
+        : t(
+            'album_navigation.mobile_back_to_albums',
+            'Back to albums from bottom'
+          )
 
       backNavigation = (
         <Link
@@ -104,19 +157,18 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
             'h-11 w-11 mr-2 flex flex-shrink-0 items-center justify-center px-0 py-0'
           )}
         >
-          <svg
-            viewBox="0 0 24 24"
-            className="h-6 w-6"
-            aria-hidden="true"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
+          <BackIcon />
         </Link>
+      )
+      mobileBackNavigation = (
+        <MobileBackNavigation
+          to={backTarget}
+          aria-label={mobileBackLabel}
+          title={mobileBackLabel}
+          data-testid="mobile-parent-navigation"
+        >
+          <BackIcon />
+        </MobileBackNavigation>
       )
     } else {
       backNavigation = (
@@ -162,6 +214,7 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
           <GearIcon />
         </button>
       )}
+      {mobileBackNavigation}
     </div>
   )
 }

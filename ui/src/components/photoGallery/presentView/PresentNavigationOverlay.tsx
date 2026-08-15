@@ -59,6 +59,12 @@ const OverlayButton = styled.button`
 const ExitButton = styled(OverlayButton)`
   left: 28px;
   top: 28px;
+
+  @media (max-width: 1000px) {
+    top: auto;
+    bottom: max(28px, env(safe-area-inset-bottom));
+    left: 20px;
+  }
 `
 
 const InfoButton = styled(OverlayButton)`
