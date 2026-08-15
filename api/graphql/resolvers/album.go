@@ -52,16 +52,7 @@ func (r *albumResolver) Media(ctx context.Context, obj *models.Album, order *mod
 
 // SubAlbums is the resolver for the subAlbums field.
 func (r *albumResolver) SubAlbums(ctx context.Context, obj *models.Album, order *models.Ordering, paginate *models.Pagination) ([]*models.Album, error) {
-	var albums []*models.Album
-
-	query := r.DB(ctx).Where("parent_album_id = ?", obj.ID)
-	query = models.FormatSQL(query, order, paginate)
-
-	if err := query.Find(&albums).Error; err != nil {
-		return nil, err
-	}
-
-	return albums, nil
+	return actions.SubAlbums(r.DB(ctx), auth.UserFromContext(ctx), obj.ID, order, paginate, nil)
 }
 
 // Owner is the resolver for the owner field.
@@ -126,7 +117,7 @@ func (r *queryResolver) MyAlbums(ctx context.Context, order *models.Ordering, pa
 		return nil, auth.ErrUnauthorized
 	}
 
-	return actions.MyAlbums(r.DB(ctx), user, order, paginate, onlyRoot, showEmpty, onlyWithFavorites)
+	return actions.MyAlbums(r.DB(ctx), user, order, paginate, onlyRoot, showEmpty, onlyWithFavorites, nil)
 }
 
 // Album is the resolver for the album field.
