@@ -13,6 +13,7 @@ import { MediaOrdering, SetOrderingFn } from '../../hooks/useOrderingParams'
 import { gql } from '@apollo/client'
 import { AlbumGalleryFields } from './__generated__/AlbumGalleryFields'
 import { useTranslation } from 'react-i18next'
+import { AlbumEngagementParams } from '../../hooks/useAlbumEngagementParams'
 
 const AlbumSectionIcon = () => (
   <svg
@@ -31,9 +32,23 @@ export const ALBUM_GALLERY_FRAGMENT = gql`
   fragment AlbumGalleryFields on Album {
     id
     title
-    subAlbums(order: { order_by: "title", order_direction: $orderDirection }) {
+    viewerState {
+      featured
+      viewCount
+      lastViewedAt
+    }
+    subAlbums(
+      order: { order_by: $albumOrderBy, order_direction: $albumOrderDirection }
+      viewFilter: $albumViewFilter
+      onlyFeatured: $onlyFeaturedAlbums
+    ) {
       id
       title
+      viewerState {
+        featured
+        viewCount
+        lastViewedAt
+      }
       thumbnail {
         id
         thumbnail {
@@ -64,6 +79,7 @@ type AlbumGalleryProps = {
   onlyFavorites?: boolean
   onFavorite?(): void
   onAlbumScanComplete?(): Promise<unknown> | unknown
+  albumEngagement?: AlbumEngagementParams
 }
 
 const AlbumGallery = React.forwardRef(
@@ -78,6 +94,7 @@ const AlbumGallery = React.forwardRef(
       ordering,
       onlyFavorites = false,
       onAlbumScanComplete,
+      albumEngagement,
     }: AlbumGalleryProps,
     ref: React.ForwardedRef<HTMLDivElement>
   ) => {
@@ -138,6 +155,7 @@ const AlbumGallery = React.forwardRef(
             ordering={ordering}
             albumId={album?.id}
             onAlbumScanComplete={onAlbumScanComplete}
+            albumEngagement={albumEngagement}
           />
         )}
         <AlbumTitle album={album} disableLink />

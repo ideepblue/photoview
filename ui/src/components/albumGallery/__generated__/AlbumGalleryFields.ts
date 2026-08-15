@@ -9,6 +9,20 @@ import { MediaType } from "./../../../__generated__/globalTypes";
 // GraphQL fragment: AlbumGalleryFields
 // ====================================================
 
+export interface AlbumGalleryFields_viewerState {
+  __typename: "AlbumViewerState";
+  featured: boolean;
+  viewCount: number;
+  lastViewedAt: Time | null;
+}
+
+export interface AlbumGalleryFields_subAlbums_viewerState {
+  __typename: "AlbumViewerState";
+  featured: boolean;
+  viewCount: number;
+  lastViewedAt: Time | null;
+}
+
 export interface AlbumGalleryFields_subAlbums_thumbnail_thumbnail {
   __typename: "MediaURL";
   /**
@@ -38,6 +52,10 @@ export interface AlbumGalleryFields_subAlbums {
   __typename: "Album";
   id: string;
   title: string;
+  /**
+   * Viewing and personal curation state for the logged-in user
+   */
+  viewerState: AlbumGalleryFields_subAlbums_viewerState;
   /**
    * An image in this album used for previewing this album
    */
@@ -104,6 +122,10 @@ export interface AlbumGalleryFields {
   __typename: "Album";
   id: string;
   title: string;
+  /**
+   * Viewing and personal curation state for the logged-in user
+   */
+  viewerState: AlbumGalleryFields_viewerState;
   /**
    * The albums contained in this album
    */
