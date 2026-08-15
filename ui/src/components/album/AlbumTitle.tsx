@@ -66,7 +66,8 @@ const BackIcon = () => (
     strokeLinecap="round"
     strokeLinejoin="round"
   >
-    <path d="M15 18l-6-6 6-6" />
+    <path d="M20 12H5" />
+    <path d="M12 19l-7-7 7-7" />
   </svg>
 )
 

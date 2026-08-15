@@ -137,7 +137,8 @@ COPY --from=ui /app/ui/dist /app/ui
 # This is a w/a for letting the UI build stage to be cached
 # and not rebuilt every new commit because of the build_arg value change.
 ARG COMMIT_SHA=NoCommit
-RUN find /app/ui/assets -type f \( -name "*.js" -o -name "*.mjs" \) \
+RUN chmod -R a+rX /app/ui \
+    && find /app/ui/assets -type f \( -name "*.js" -o -name "*.mjs" \) \
         -exec grep -qF -- '"-=<GitHub-CI-commit-sha-placeholder>=-"' {} \; \
         -exec sed -i 's/"-=<GitHub-CI-commit-sha-placeholder>=-"/"'"${COMMIT_SHA}"'"/g' {} \; \
     # Archive static files for better performance

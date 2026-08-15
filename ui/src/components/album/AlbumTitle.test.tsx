@@ -79,6 +79,12 @@ test('links back to the immediate parent album', async () => {
     'data-testid',
     'mobile-parent-navigation'
   )
+
+  const iconPaths = Array.from(
+    mobileBackLink.querySelectorAll('svg path'),
+    path => path.getAttribute('d')
+  )
+  expect(iconPaths).toEqual(['M20 12H5', 'M12 19l-7-7 7-7'])
 })
 
 test('links a root album back to the albums page', async () => {
