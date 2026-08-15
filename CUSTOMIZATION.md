@@ -17,6 +17,7 @@ tree; it does not maintain a second checkout or deployment patch stack.
 | Automatic covers   | Without a manual cover, direct `cover.*` files win, then direct filenames containing `cover`, then the same two rules in descendants, before the normal fallback.                                                                                                                                                                                                                                                                                                                                                              |
 | Album maintenance  | Administrators can scan only the current album or recurse through descendants. Normal mode discovers media and fills missing caches; the optional force mode atomically replaces existing thumbnail URLs/files.                                                                                                                                                                                                                                                                                                                |
 | Album ordering     | A normal album with no explicit ordering query defaults to title ascending. Explicit URL choices, share pages, and the all-albums page keep their own behavior.                                                                                                                                                                                                                                                                                                                                                                |
+| Album engagement   | Each user can feature albums and gets a private viewed count. A view is counted only after a photo has loaded or a video has actually played continuously for two seconds; the exact containing album is counted at most once per rolling 30-minute window. Album cards show non-zero counts and a feature toggle. Current-directory album lists can combine viewed/unviewed and featured filters, then sort by view count or recent viewing; these choices remain in the URL.                                                                 |
 
 The main implementation entry points are:
 
@@ -27,6 +28,13 @@ The main implementation entry points are:
 - `api/graphql/models/album.go` for automatic cover selection;
 - `api/graphql/resolvers/scanner.go` and `api/scanner/` for scoped scans and
   force-aware thumbnail processing;
+- `api/graphql/models/user_album_data.go`,
+  `api/graphql/models/actions/album_engagement.go`, and the album resolvers for
+  per-user engagement state, deduplicated counting, filtering, and sorting;
+- `ui/src/hooks/useAlbumEngagementParams.ts`,
+  `ui/src/components/album/AlbumFeaturedButton.tsx`, and
+  `ui/src/components/photoGallery/presentView/AlbumViewTracking.tsx` for the
+  engagement controls and qualifying-view timer;
 - `ui/src/Pages/AlbumPage/AlbumPage.tsx` for the album-specific ordering default.
 
 ## Branch and remote model
