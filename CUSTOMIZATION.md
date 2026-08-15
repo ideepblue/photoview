@@ -10,9 +10,9 @@ tree; it does not maintain a second checkout or deployment patch stack.
 
 | Area | Customized behavior |
 | --- | --- |
-| Fullscreen viewer | Pointer-driven left/right/up/down swipes with a following neighbor, commit/rebound animation, axis locking, keyboard/button compatibility, and reduced-motion support. |
+| Fullscreen viewer | Pointer-driven left/right/up/down swipes with a following neighbor, commit/rebound animation, axis locking, keyboard/button compatibility, and reduced-motion support. The active position and filename are individually switchable from a persistent quick-control preference. |
 | Mobile albums | Compact list plus 2/3/4-column natural-ratio masonry choices below 480 px; the choice persists in `localStorage`; cards are assigned deterministically to the estimated shortest lane. |
-| Mobile navigation | Nested albums and photos are visually separated, album cards carry a folder badge, the fixed bottom menu cannot cover the final card, and an explicit parent/back button is available. |
+| Mobile navigation | Nested albums and photos are visually separated, album cards carry a folder badge, the fixed bottom menu cannot cover the final card, and parent/back actions are available in both the header and a bottom-reachable floating control. The fullscreen exit moves to the lower left on narrow screens and appears only with the other tap-revealed controls. |
 | Details and covers | Fullscreen controls start hidden and appear on a light tap. The existing Info sidebar remains available on touch devices and can set the selected photo as the current or parent album cover. |
 | Automatic covers | Without a manual cover, direct `cover.*` files win, then direct filenames containing `cover`, then the same two rules in descendants, before the normal fallback. |
 | Album maintenance | Administrators can scan only the current album or recurse through descendants. Normal mode discovers media and fills missing caches; the optional force mode atomically replaces existing thumbnail URLs/files. |

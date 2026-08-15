@@ -97,6 +97,9 @@ const PresentView = ({
       <PresentNavigationOverlay
         dispatchMedia={dispatchMedia}
         disableSaveCloseInHistory
+        activeIndex={activeIndex}
+        mediaCount={media.length}
+        filename={currentMedia.title}
         onShowInfo={() => {
           updateSidebar(<MediaSidebar media={currentMedia} hidePreview />)
         }}

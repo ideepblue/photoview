@@ -70,6 +70,15 @@ test('links back to the immediate parent album', async () => {
   expect(backLink).toHaveAttribute('href', '/album/2')
   expect(backLink).toHaveClass('px-0', 'py-0')
   expect(backLink).not.toHaveClass('px-6', 'py-0.5')
+
+  const mobileBackLink = await screen.findByRole('link', {
+    name: 'Back to parent album from bottom',
+  })
+  expect(mobileBackLink).toHaveAttribute('href', '/album/2')
+  expect(mobileBackLink).toHaveAttribute(
+    'data-testid',
+    'mobile-parent-navigation'
+  )
 })
 
 test('links a root album back to the albums page', async () => {
@@ -103,5 +112,9 @@ test('links a root album back to the albums page', async () => {
 
   expect(
     await screen.findByRole('link', { name: 'Back to albums' })
+  ).toHaveAttribute('href', '/albums')
+
+  expect(
+    await screen.findByRole('link', { name: 'Back to albums from bottom' })
   ).toHaveAttribute('href', '/albums')
 })
