@@ -10,6 +10,12 @@ import (
 	"time"
 )
 
+type AlbumViewerState struct {
+	Featured     bool       `json:"featured"`
+	ViewCount    int        `json:"viewCount"`
+	LastViewedAt *time.Time `json:"lastViewedAt,omitempty"`
+}
+
 type AuthorizeResult struct {
 	Success bool `json:"success"`
 	// A textual status message describing the result, can be used to show an error message when `success` is false
@@ -106,6 +112,63 @@ type TimelineGroup struct {
 	MediaTotal int `json:"mediaTotal"`
 	// The day shared for all media in this timeline group
 	Date time.Time `json:"date"`
+}
+
+type AlbumViewFilter string
+
+const (
+	AlbumViewFilterAll      AlbumViewFilter = "ALL"
+	AlbumViewFilterViewed   AlbumViewFilter = "VIEWED"
+	AlbumViewFilterUnviewed AlbumViewFilter = "UNVIEWED"
+)
+
+var AllAlbumViewFilter = []AlbumViewFilter{
+	AlbumViewFilterAll,
+	AlbumViewFilterViewed,
+	AlbumViewFilterUnviewed,
+}
+
+func (e AlbumViewFilter) IsValid() bool {
+	switch e {
+	case AlbumViewFilterAll, AlbumViewFilterViewed, AlbumViewFilterUnviewed:
+		return true
+	}
+	return false
+}
+
+func (e AlbumViewFilter) String() string {
+	return string(e)
+}
+
+func (e *AlbumViewFilter) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AlbumViewFilter(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AlbumViewFilter", str)
+	}
+	return nil
+}
+
+func (e AlbumViewFilter) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *AlbumViewFilter) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AlbumViewFilter) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 // Supported language translations of the user interface

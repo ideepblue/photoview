@@ -44,6 +44,18 @@ func findUserAlbumData(db *gorm.DB, userID int, albumID int) (*models.UserAlbumD
 	return &state, nil
 }
 
+func AlbumViewerState(db *gorm.DB, user *models.User, albumID int) (*models.UserAlbumData, error) {
+	if _, err := authorizedAlbum(db, user, albumID); err != nil {
+		return nil, err
+	}
+
+	state, err := findUserAlbumData(db, user.ID, albumID)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return &models.UserAlbumData{UserID: user.ID, AlbumID: albumID}, nil
+	}
+	return state, err
+}
+
 func SetAlbumFeatured(db *gorm.DB, user *models.User, albumID int, featured bool) (*models.UserAlbumData, error) {
 	if _, err := authorizedAlbum(db, user, albumID); err != nil {
 		return nil, err

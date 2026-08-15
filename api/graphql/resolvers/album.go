@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	api "github.com/photoview/photoview/api/graphql"
 	"github.com/photoview/photoview/api/graphql/auth"
@@ -51,8 +52,33 @@ func (r *albumResolver) Media(ctx context.Context, obj *models.Album, order *mod
 }
 
 // SubAlbums is the resolver for the subAlbums field.
-func (r *albumResolver) SubAlbums(ctx context.Context, obj *models.Album, order *models.Ordering, paginate *models.Pagination) ([]*models.Album, error) {
-	return actions.SubAlbums(r.DB(ctx), auth.UserFromContext(ctx), obj.ID, order, paginate, nil)
+func (r *albumResolver) SubAlbums(ctx context.Context, obj *models.Album, order *models.Ordering, paginate *models.Pagination, viewFilter *models.AlbumViewFilter, onlyFeatured *bool) ([]*models.Album, error) {
+	return actions.SubAlbums(
+		r.DB(ctx),
+		auth.UserFromContext(ctx),
+		obj.ID,
+		order,
+		paginate,
+		albumEngagementFilter(viewFilter, onlyFeatured),
+	)
+}
+
+// ViewerState is the resolver for the viewerState field.
+func (r *albumResolver) ViewerState(ctx context.Context, obj *models.Album) (*models.AlbumViewerState, error) {
+	user := auth.UserFromContext(ctx)
+	if user == nil {
+		return nil, auth.ErrUnauthorized
+	}
+
+	if obj.ViewerState != nil && obj.ViewerState.UserID == user.ID {
+		return albumViewerState(obj.ViewerState), nil
+	}
+
+	state, err := actions.AlbumViewerState(r.DB(ctx), user, obj.ID)
+	if err != nil {
+		return nil, err
+	}
+	return albumViewerState(state), nil
 }
 
 // Owner is the resolver for the owner field.
@@ -110,14 +136,51 @@ func (r *mutationResolver) SetAlbumCover(ctx context.Context, coverID int, album
 	return actions.SetAlbumCover(r.DB(ctx), user, coverID)
 }
 
-// MyAlbums is the resolver for the myAlbums field.
-func (r *queryResolver) MyAlbums(ctx context.Context, order *models.Ordering, paginate *models.Pagination, onlyRoot *bool, showEmpty *bool, onlyWithFavorites *bool) ([]*models.Album, error) {
+// RecordAlbumView is the resolver for the recordAlbumView field.
+func (r *mutationResolver) RecordAlbumView(ctx context.Context, albumID int, mediaID int) (*models.AlbumViewerState, error) {
 	user := auth.UserFromContext(ctx)
 	if user == nil {
 		return nil, auth.ErrUnauthorized
 	}
 
-	return actions.MyAlbums(r.DB(ctx), user, order, paginate, onlyRoot, showEmpty, onlyWithFavorites, nil)
+	state, err := actions.RecordAlbumView(r.DB(ctx), user, albumID, mediaID, time.Now().UTC())
+	if err != nil {
+		return nil, err
+	}
+	return albumViewerState(state), nil
+}
+
+// SetAlbumFeatured is the resolver for the setAlbumFeatured field.
+func (r *mutationResolver) SetAlbumFeatured(ctx context.Context, albumID int, featured bool) (*models.AlbumViewerState, error) {
+	user := auth.UserFromContext(ctx)
+	if user == nil {
+		return nil, auth.ErrUnauthorized
+	}
+
+	state, err := actions.SetAlbumFeatured(r.DB(ctx), user, albumID, featured)
+	if err != nil {
+		return nil, err
+	}
+	return albumViewerState(state), nil
+}
+
+// MyAlbums is the resolver for the myAlbums field.
+func (r *queryResolver) MyAlbums(ctx context.Context, order *models.Ordering, paginate *models.Pagination, onlyRoot *bool, showEmpty *bool, onlyWithFavorites *bool, viewFilter *models.AlbumViewFilter, onlyFeatured *bool) ([]*models.Album, error) {
+	user := auth.UserFromContext(ctx)
+	if user == nil {
+		return nil, auth.ErrUnauthorized
+	}
+
+	return actions.MyAlbums(
+		r.DB(ctx),
+		user,
+		order,
+		paginate,
+		onlyRoot,
+		showEmpty,
+		onlyWithFavorites,
+		albumEngagementFilter(viewFilter, onlyFeatured),
+	)
 }
 
 // Album is the resolver for the album field.

@@ -50,6 +50,9 @@ models:
     model: github.com/photoview/photoview/api/graphql/models.VideoMetadata
   Album:
     model: github.com/photoview/photoview/api/graphql/models.Album
+    fields:
+      viewerState:
+        resolver: true
   ShareToken:
     model: github.com/photoview/photoview/api/graphql/models.ShareToken
     fields:
