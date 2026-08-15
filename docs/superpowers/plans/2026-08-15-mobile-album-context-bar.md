@@ -21,10 +21,12 @@
 ### Task 1: Handedness preference contract
 
 **Files:**
+
 - Create: `ui/src/components/album/mobileAlbumContextBarPreferences.ts`
 - Create: `ui/src/components/album/mobileAlbumContextBarPreferences.test.tsx`
 
 **Interfaces:**
+
 - Produces: `MobileAlbumContextBarHandedness = 'left' | 'right'`, `MOBILE_ALBUM_CONTEXT_BAR_HANDEDNESS_KEY`, `readMobileAlbumContextBarHandedness()`, `writeMobileAlbumContextBarHandedness(value)`, and `useMobileAlbumContextBarHandedness()`.
 
 - [ ] **Step 1: Write failing preference tests**
@@ -48,12 +50,14 @@ Run the Task 1 command and require all preference tests to pass.
 ### Task 2: Fixed responsive album context bar
 
 **Files:**
+
 - Modify: `ui/src/components/album/AlbumTitle.tsx`
 - Modify: `ui/src/components/album/AlbumTitle.test.tsx`
 - Modify: `ui/src/Pages/AlbumPage/AlbumPage.tsx`
 - Modify: `ui/src/index.css`
 
 **Interfaces:**
+
 - Consumes: `useMobileAlbumContextBarHandedness()` from Task 1.
 - Produces: one `data-testid="album-context-bar"` row with `data-handedness`, and `mobile-album-context-bar-clearance` for album-page bottom padding.
 
@@ -82,11 +86,13 @@ Run the Task 2 command and require every `AlbumTitle` test to pass.
 ### Task 3: Left/right setting in album options
 
 **Files:**
+
 - Create: `ui/src/components/album/MobileAlbumContextBarPreference.tsx`
 - Create: `ui/src/components/album/MobileAlbumContextBarPreference.test.tsx`
 - Modify: `ui/src/components/sidebar/AlbumSidebar.tsx`
 
 **Interfaces:**
+
 - Consumes: `useMobileAlbumContextBarHandedness()` from Task 1.
 - Produces: a labelled two-option control with `aria-pressed` states for `Left hand` and `Right hand`.
 
@@ -111,9 +117,11 @@ Run the Task 3 command and require all setting tests to pass.
 ### Task 4: Integrated verification and release boundary
 
 **Files:**
+
 - Modify: `CUSTOMIZATION.md`
 
 **Interfaces:**
+
 - Consumes: completed Tasks 1-3.
 - Produces: documented mobile-navigation behavior and a verified source commit suitable for a candidate image.
 

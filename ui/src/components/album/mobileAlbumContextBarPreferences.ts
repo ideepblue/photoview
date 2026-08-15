@@ -44,10 +44,9 @@ export const writeMobileAlbumContextBarHandedness = (
 }
 
 export const useMobileAlbumContextBarHandedness = () => {
-  const [handedness, setHandedness] =
-    useState<MobileAlbumContextBarHandedness>(
-      readMobileAlbumContextBarHandedness
-    )
+  const [handedness, setHandedness] = useState<MobileAlbumContextBarHandedness>(
+    readMobileAlbumContextBarHandedness
+  )
 
   useEffect(() => {
     const handlePreferenceChange = (event: Event) => {
