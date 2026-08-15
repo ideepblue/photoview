@@ -44,6 +44,7 @@ export interface MediaGalleryFields_videoWeb {
 export interface MediaGalleryFields {
   __typename: "Media";
   id: string;
+  title: string;
   type: MediaType;
   /**
    * A short string that can be used to generate a blured version of the media, to show while the original is loading

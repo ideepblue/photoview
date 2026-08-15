@@ -7,7 +7,7 @@ import { MediaGalleryFields } from '../__generated__/MediaGalleryFields'
 
 export type PresentMediaFields = Pick<
   MediaGalleryFields,
-  'id' | 'type' | 'thumbnail' | 'highRes' | 'videoWeb'
+  'id' | 'title' | 'type' | 'thumbnail' | 'highRes' | 'videoWeb'
 >
 
 const StyledPhoto = styled(ProtectedImage)`

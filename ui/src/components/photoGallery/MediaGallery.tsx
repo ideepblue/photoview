@@ -37,6 +37,7 @@ export const PhotoFiller = styled.div`
 export const MEDIA_GALLERY_FRAGMENT = gql`
   fragment MediaGalleryFields on Media {
     id
+    title
     type
     blurhash
     thumbnail {
