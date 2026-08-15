@@ -62,6 +62,7 @@ type PresentSwipeTrackProps = {
   onNavigate(navigation: SwipeNavigation): void
   onTap?(): void
   imageLoaded?(): void
+  onViewingActive?(active: boolean): void
 }
 
 const idleMotion = (): MotionState => ({
@@ -85,6 +86,7 @@ const PresentSwipeTrack = ({
   onNavigate,
   onTap,
   imageLoaded,
+  onViewingActive,
 }: PresentSwipeTrackProps) => {
   const [motion, setMotion] = useState<MotionState>(idleMotion)
   const motionRef = useRef<MotionState>(motion)
@@ -315,7 +317,11 @@ const PresentSwipeTrack = ({
           transition,
         }}
       >
-        <PresentMedia media={currentMedia} imageLoaded={imageLoaded} />
+        <PresentMedia
+          media={currentMedia}
+          imageLoaded={imageLoaded}
+          onViewingActive={onViewingActive}
+        />
       </MediaLayer>
     </SwipeTrack>
   )

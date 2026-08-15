@@ -1,5 +1,9 @@
 import classNames from 'classnames'
-import React, { DetailedHTMLProps, ImgHTMLAttributes } from 'react'
+import React, {
+  DetailedHTMLProps,
+  ImgHTMLAttributes,
+  VideoHTMLAttributes,
+} from 'react'
 import { useRef } from 'react'
 import { useState } from 'react'
 import { useEffect } from 'react'
@@ -179,7 +183,8 @@ export interface ProtectedVideoProps_Media {
   }
 }
 
-export interface ProtectedVideoProps {
+export interface ProtectedVideoProps
+  extends VideoHTMLAttributes<HTMLVideoElement> {
   media: ProtectedVideoProps_Media
 }
 

@@ -68,8 +68,12 @@ export const ALBUM_GALLERY_FRAGMENT = gql`
   }
 `
 
+type AlbumGalleryAlbum = Omit<AlbumGalleryFields, 'viewerState'> & {
+  viewerState?: AlbumGalleryFields['viewerState']
+}
+
 type AlbumGalleryProps = {
-  album?: AlbumGalleryFields
+  album?: AlbumGalleryAlbum
   loading?: boolean
   customAlbumLink?(albumID: string): string
   showFilter?: boolean
@@ -169,6 +173,7 @@ const AlbumGallery = React.forwardRef(
           loading={loading}
           mediaState={mediaState}
           dispatchMedia={dispatchMedia}
+          albumId={album?.viewerState ? album.id : undefined}
         />
       </div>
     )

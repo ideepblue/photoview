@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import styled from 'styled-components'
 import { MediaType } from '../../../__generated__/globalTypes'
 import { exhaustiveCheck } from '../../../helpers/utils'
@@ -7,7 +7,7 @@ import { MediaGalleryFields } from '../__generated__/MediaGalleryFields'
 
 export type PresentMediaFields = Pick<
   MediaGalleryFields,
-  'id' | 'title' | 'type' | 'thumbnail' | 'highRes' | 'videoWeb'
+  '__typename' | 'id' | 'title' | 'type' | 'thumbnail' | 'highRes' | 'videoWeb'
 >
 
 const StyledPhoto = styled(ProtectedImage)`
@@ -31,17 +31,20 @@ const StyledVideo = styled(ProtectedVideo)`
 type PresentMediaProps = {
   media: PresentMediaFields
   imageLoaded?(): void
+  onViewingActive?(active: boolean): void
 }
 
 const PresentMedia = ({
   media,
   imageLoaded,
-  ...otherProps
+  onViewingActive,
 }: PresentMediaProps) => {
+  useEffect(() => () => onViewingActive?.(false), [media.id, onViewingActive])
+
   switch (media.type) {
     case MediaType.Photo:
       return (
-        <div {...otherProps}>
+        <div>
           <StyledPhoto
             key={`${media.id}-thumb`}
             src={media.thumbnail?.url}
@@ -58,12 +61,22 @@ const PresentMedia = ({
               const elem = e.target as HTMLImageElement
               elem.style.display = 'initial'
               imageLoaded && imageLoaded()
+              onViewingActive?.(true)
             }}
           />
         </div>
       )
     case MediaType.Video:
-      return <StyledVideo media={media} data-testid="present-video" />
+      return (
+        <StyledVideo
+          media={media}
+          data-testid="present-video"
+          onPlaying={() => onViewingActive?.(true)}
+          onPause={() => onViewingActive?.(false)}
+          onEnded={() => onViewingActive?.(false)}
+          onWaiting={() => onViewingActive?.(false)}
+        />
+      )
   }
 
   exhaustiveCheck(media.type)
