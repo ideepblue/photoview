@@ -163,6 +163,7 @@ var database_models []interface{} = []interface{}{
 	&models.ShareToken{},
 	&models.UserMediaData{},
 	&models.UserAlbums{},
+	&models.UserAlbumData{},
 	&models.UserPreferences{},
 
 	// Face detection

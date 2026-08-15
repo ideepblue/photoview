@@ -18,6 +18,8 @@ type Album struct {
 	Path     string `gorm:"not null"`
 	PathHash string `gorm:"unique"`
 	CoverID  *int
+
+	ViewerState *UserAlbumData `gorm:"-"`
 }
 
 func (a *Album) FilePath() string {
