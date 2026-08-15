@@ -22,10 +22,12 @@
 ### Task 1: Browser preference contract
 
 **Files:**
+
 - Create: `ui/src/components/photoGallery/presentView/presentViewPreferences.ts`
 - Test: `ui/src/components/photoGallery/presentView/presentViewPreferences.test.ts`
 
 **Interfaces:**
+
 - Produces: `PresentViewPreferences`, `getPresentViewPreferences(storage?)`, and `setPresentViewPreferences(preferences, storage?)`.
 
 - [ ] **Step 1: Write failing tests for defaults, valid persistence, malformed values, and unavailable storage**
@@ -34,15 +36,12 @@
 expect(getPresentViewPreferences(storage)).toEqual({
   showPosition: true,
   showFilename: true,
-})
-setPresentViewPreferences(
-  { showPosition: false, showFilename: true },
-  storage
-)
+});
+setPresentViewPreferences({ showPosition: false, showFilename: true }, storage);
 expect(getPresentViewPreferences(storage)).toEqual({
   showPosition: false,
   showFilename: true,
-})
+});
 ```
 
 - [ ] **Step 2: Run `npm test -- --run src/components/photoGallery/presentView/presentViewPreferences.test.ts` and confirm failure because the module does not exist**
@@ -52,6 +51,7 @@ expect(getPresentViewPreferences(storage)).toEqual({
 ### Task 2: Fullscreen metadata and quick switches
 
 **Files:**
+
 - Modify: `ui/src/components/photoGallery/MediaGallery.tsx`
 - Modify: `ui/src/components/photoGallery/presentView/PresentMedia.tsx`
 - Modify: `ui/src/components/photoGallery/presentView/PresentView.tsx`
@@ -61,17 +61,18 @@ expect(getPresentViewPreferences(storage)).toEqual({
 - Regenerate: `ui/src/components/photoGallery/__generated__/MediaGalleryFields.ts`
 
 **Interfaces:**
+
 - Consumes: `getPresentViewPreferences` and `setPresentViewPreferences` from Task 1.
 - Produces: overlay props `activeIndex: number`, `mediaCount: number`, and `filename: string`.
 
 - [ ] **Step 1: Extend media fixtures with literal titles and write failing tests for `2 / 3`, the active filename, and independent toggle behavior**
 
 ```tsx
-expect(screen.getByText('2 / 3')).toBeInTheDocument()
-expect(screen.getByText('current.jpg')).toBeInTheDocument()
-fireEvent.click(screen.getByRole('checkbox', { name: 'Show position' }))
-expect(screen.queryByText('2 / 3')).not.toBeInTheDocument()
-expect(screen.getByText('current.jpg')).toBeInTheDocument()
+expect(screen.getByText("2 / 3")).toBeInTheDocument();
+expect(screen.getByText("current.jpg")).toBeInTheDocument();
+fireEvent.click(screen.getByRole("checkbox", { name: "Show position" }));
+expect(screen.queryByText("2 / 3")).not.toBeInTheDocument();
+expect(screen.getByText("current.jpg")).toBeInTheDocument();
 ```
 
 - [ ] **Step 2: Run the two focused viewer test files and confirm they fail because metadata/settings are absent**
@@ -83,12 +84,14 @@ expect(screen.getByText('current.jpg')).toBeInTheDocument()
 ### Task 3: Thumb-reachable mobile navigation
 
 **Files:**
+
 - Modify: `ui/src/components/photoGallery/presentView/PresentNavigationOverlay.tsx`
 - Modify: `ui/src/components/photoGallery/presentView/PresentNavigationOverlay.test.tsx`
 - Modify: `ui/src/components/album/AlbumTitle.tsx`
 - Modify: `ui/src/components/album/AlbumTitle.test.tsx`
 
 **Interfaces:**
+
 - Consumes: the existing `backTarget` derived from `album.path`.
 - Produces: a mobile exit placement and `mobile-parent-navigation` link.
 
@@ -101,9 +104,11 @@ expect(screen.getByText('current.jpg')).toBeInTheDocument()
 ### Task 4: Documentation and full verification
 
 **Files:**
+
 - Modify: `CUSTOMIZATION.md`
 
 **Interfaces:**
+
 - Consumes: verified behavior from Tasks 1-3.
 - Produces: an updated customization inventory and a buildable feature branch.
 
