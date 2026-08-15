@@ -1,3 +1,15 @@
+enum AlbumViewFilter {
+  ALL
+  VIEWED
+  UNVIEWED
+}
+
+type AlbumViewerState {
+  featured: Boolean!
+  viewCount: Int!
+  lastViewedAt: Time
+}
+
 type Album {
   id: ID!
   title: String!
@@ -13,8 +25,13 @@ type Album {
   "The albums contained in this album"
   subAlbums(
     order: Ordering,
-    paginate: Pagination
+    paginate: Pagination,
+    viewFilter: AlbumViewFilter,
+    onlyFeatured: Boolean
   ): [Album!]!
+
+  "Viewing and personal curation state for the logged-in user"
+  viewerState: AlbumViewerState! @isAuthorized
 
   "The album which contains this album"
   parentAlbum: Album
@@ -42,6 +59,10 @@ extend type Query {
     showEmpty: Boolean
     "Show only albums having favorites"
     onlyWithFavorites: Boolean
+    "Filter albums by whether the logged-in user has viewed them"
+    viewFilter: AlbumViewFilter
+    "Show only albums personally featured by the logged-in user"
+    onlyFeatured: Boolean
   ): [Album!]! @isAuthorized
 
   """
@@ -57,4 +78,10 @@ extend type Mutation {
 
   "Assign a cover photo to an album"
   setAlbumCover(coverID: ID!, albumID: ID): Album! @isAuthorized
+
+  "Record a qualifying fullscreen presentation for an album"
+  recordAlbumView(albumID: ID!, mediaID: ID!): AlbumViewerState! @isAuthorized
+
+  "Set or clear personal curation for an album"
+  setAlbumFeatured(albumID: ID!, featured: Boolean!): AlbumViewerState! @isAuthorized
 }

@@ -6,8 +6,21 @@ import (
 	"gorm.io/gorm"
 )
 
+type AlbumViewStatus string
+
+const (
+	AlbumViewStatusAll      AlbumViewStatus = ""
+	AlbumViewStatusViewed   AlbumViewStatus = "viewed"
+	AlbumViewStatusUnviewed AlbumViewStatus = "unviewed"
+)
+
+type AlbumEngagementFilter struct {
+	ViewStatus   AlbumViewStatus
+	OnlyFeatured bool
+}
+
 func MyAlbums(db *gorm.DB, user *models.User, order *models.Ordering, paginate *models.Pagination,
-	onlyRoot *bool, showEmpty *bool, onlyWithFavorites *bool) ([]*models.Album, error) {
+	onlyRoot *bool, showEmpty *bool, onlyWithFavorites *bool, engagement *AlbumEngagementFilter) ([]*models.Album, error) {
 
 	if err := user.FillAlbums(db); err != nil {
 		return nil, err
@@ -37,14 +50,109 @@ func MyAlbums(db *gorm.DB, user *models.User, order *models.Ordering, paginate *
 
 	query = favoritesQuery(showEmpty, db, onlyWithFavorites, user, query)
 
-	query = models.FormatSQL(query, order, paginate)
+	query = formatAlbumEngagementSQL(query, user, order, paginate, engagement)
 
 	var albums []*models.Album
 	if err := query.Find(&albums).Error; err != nil {
 		return nil, err
 	}
+	if err := attachAlbumViewerStates(db, user, albums); err != nil {
+		return nil, err
+	}
 
 	return albums, nil
+}
+
+func SubAlbums(db *gorm.DB, user *models.User, parentAlbumID int, order *models.Ordering,
+	paginate *models.Pagination, engagement *AlbumEngagementFilter) ([]*models.Album, error) {
+	query := db.Model(&models.Album{}).Where("albums.parent_album_id = ?", parentAlbumID)
+	query = formatAlbumEngagementSQL(query, user, order, paginate, engagement)
+
+	var albums []*models.Album
+	if err := query.Find(&albums).Error; err != nil {
+		return nil, err
+	}
+	if err := attachAlbumViewerStates(db, user, albums); err != nil {
+		return nil, err
+	}
+
+	return albums, nil
+}
+
+func formatAlbumEngagementSQL(query *gorm.DB, user *models.User, order *models.Ordering,
+	paginate *models.Pagination, engagement *AlbumEngagementFilter) *gorm.DB {
+	if user == nil {
+		return models.FormatSQL(query, order, paginate)
+	}
+
+	query = query.Joins(
+		"LEFT JOIN user_album_data AS album_viewer_state ON album_viewer_state.album_id = albums.id AND album_viewer_state.user_id = ?",
+		user.ID,
+	)
+
+	if engagement != nil {
+		switch engagement.ViewStatus {
+		case AlbumViewStatusViewed:
+			query = query.Where("COALESCE(album_viewer_state.view_count, 0) > 0")
+		case AlbumViewStatusUnviewed:
+			query = query.Where("COALESCE(album_viewer_state.view_count, 0) = 0")
+		}
+		if engagement.OnlyFeatured {
+			query = query.Where("COALESCE(album_viewer_state.featured, FALSE) = TRUE")
+		}
+	}
+
+	if order == nil || order.OrderBy == nil {
+		return models.FormatSQL(query, order, paginate)
+	}
+
+	direction := "ASC"
+	if order.OrderDirection != nil && *order.OrderDirection == models.OrderDirectionDesc {
+		direction = "DESC"
+	}
+
+	switch *order.OrderBy {
+	case "view_count":
+		query = query.Order("COALESCE(album_viewer_state.view_count, 0) " + direction)
+		query = query.Order("albums.title ASC")
+		return models.FormatSQL(query, nil, paginate)
+	case "last_viewed_at":
+		query = query.Order("album_viewer_state.last_viewed_at IS NULL ASC")
+		query = query.Order("album_viewer_state.last_viewed_at " + direction)
+		query = query.Order("albums.title ASC")
+		return models.FormatSQL(query, nil, paginate)
+	default:
+		return models.FormatSQL(query, order, paginate)
+	}
+}
+
+func attachAlbumViewerStates(db *gorm.DB, user *models.User, albums []*models.Album) error {
+	if user == nil || len(albums) == 0 {
+		return nil
+	}
+
+	albumIDs := make([]int, len(albums))
+	for index, album := range albums {
+		albumIDs[index] = album.ID
+		album.ViewerState = &models.UserAlbumData{UserID: user.ID, AlbumID: album.ID}
+	}
+
+	var states []models.UserAlbumData
+	if err := db.Where("user_id = ? AND album_id IN (?)", user.ID, albumIDs).Find(&states).Error; err != nil {
+		return err
+	}
+
+	statesByAlbum := make(map[int]*models.UserAlbumData, len(states))
+	for index := range states {
+		statesByAlbum[states[index].AlbumID] = &states[index]
+	}
+	for _, album := range albums {
+		if state, ok := statesByAlbum[album.ID]; ok {
+			album.ViewerState = state
+		}
+	}
+
+	return nil
 }
 
 func getSingleRootAlbumID(user *models.User) int {

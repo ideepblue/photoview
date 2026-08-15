@@ -11,8 +11,18 @@ import { ReactComponent as DirectionIcon } from './icons/direction-arrow.svg'
 import Dropdown from '../../primitives/form/Dropdown'
 import classNames from 'classnames'
 import AlbumScanControl from './AlbumScanControl'
+import {
+  AlbumEngagementParams,
+  AlbumViewStatus,
+} from '../../hooks/useAlbumEngagementParams'
 
-export type SortingOptionValue = 'date_shot' | 'updated_at' | 'title' | 'type'
+export type SortingOptionValue =
+  | 'date_shot'
+  | 'updated_at'
+  | 'title'
+  | 'type'
+  | 'view_count'
+  | 'last_viewed_at'
 export type SortingOption = { value: SortingOptionValue; label: string }
 
 export type FavoriteCheckboxProps = {
@@ -40,12 +50,18 @@ type SortingOptionsProps = {
   ordering?: MediaOrdering
   setOrdering?: SetOrderingFn
   items?: SortingOption[]
+  label?: string
+  idPrefix?: string
+  directionLabel?: string
 }
 
 const SortingOptions = ({
   setOrdering,
   ordering,
   items,
+  label,
+  idPrefix = 'filter_group_sort',
+  directionLabel,
 }: SortingOptionsProps) => {
   const { t } = useTranslation()
 
@@ -89,26 +105,29 @@ const SortingOptions = ({
   )
 
   const sortingOptions = items ?? defaultOptions
+  const sortLabel = label ?? t('album_filter.sort', 'Sort')
+  const sortDirectionLabel =
+    directionLabel ?? t('album_filter.sort_direction', 'Sort direction')
 
   return (
     <fieldset>
-      <legend id="filter_group_sort-label" className="inline-block mb-1">
+      <legend id={`${idPrefix}-label`} className="inline-block mb-1">
         <SortingIcon
           className="inline-block align-baseline mr-1 mt-1"
           aria-hidden="true"
         />
-        <span>{t('album_filter.sort', 'Sort')}</span>
+        <span>{sortLabel}</span>
       </legend>
       <div>
         <Dropdown
-          aria-labelledby="filter_group_sort-label"
+          aria-labelledby={`${idPrefix}-label`}
           setSelected={changeOrderBy}
           value={ordering?.orderBy || undefined}
           items={sortingOptions}
         />
         <button
-          title={t('album_filter.sort_direction', 'Sort direction')}
-          aria-label={t('album_filter.sort_direction', 'Sort direction')}
+          title={sortDirectionLabel}
+          aria-label={sortDirectionLabel}
           aria-pressed={ordering?.orderDirection === OrderDirection.DESC}
           className={classNames(
             'bg-gray-50 h-[30px] align-top px-2 py-1 rounded ml-2 border border-gray-200 focus:outline-none focus:border-blue-300 text-[#8b8b8b] hover:bg-gray-100 hover:text-[#777]',
@@ -129,12 +148,108 @@ const SortingOptions = ({
   )
 }
 
+const AlbumEngagementControls = ({
+  viewStatus,
+  setViewStatus,
+  onlyFeatured,
+  setOnlyFeatured,
+  ordering,
+  setOrdering,
+}: AlbumEngagementParams) => {
+  const { t } = useTranslation()
+  const statusOptions: Array<{
+    value: AlbumViewStatus
+    label: string
+  }> = [
+    { value: 'all', label: t('album_filter.albums.all', 'All albums') },
+    {
+      value: 'viewed',
+      label: t('album_filter.albums.viewed', 'Viewed albums'),
+    },
+    {
+      value: 'unviewed',
+      label: t('album_filter.albums.unviewed', 'Unviewed albums'),
+    },
+  ]
+  const sortOptions: SortingOption[] = [
+    {
+      value: 'title',
+      label: t('album_filter.sorting_options.title', 'Title'),
+    },
+    {
+      value: 'updated_at',
+      label: t('album_filter.sorting_options.date_imported', 'Date imported'),
+    },
+    {
+      value: 'view_count',
+      label: t('album_filter.sorting_options.view_count', 'View count'),
+    },
+    {
+      value: 'last_viewed_at',
+      label: t(
+        'album_filter.sorting_options.last_viewed_at',
+        'Recently viewed'
+      ),
+    },
+  ]
+
+  return (
+    <>
+      <fieldset>
+        <legend className="mb-1">
+          {t('album_filter.albums.view_status', 'Album view status')}
+        </legend>
+        <div className="inline-flex rounded-md border border-gray-200 bg-gray-50 p-0.5 dark:border-dark-input-border dark:bg-dark-input-bg">
+          {statusOptions.map(option => (
+            <button
+              key={option.value}
+              type="button"
+              aria-label={option.label}
+              aria-pressed={viewStatus === option.value}
+              className={classNames(
+                'min-h-[30px] rounded px-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300',
+                viewStatus === option.value
+                  ? 'bg-white text-gray-900 shadow dark:bg-dark-bg dark:text-white'
+                  : 'text-gray-500 dark:text-gray-300'
+              )}
+              onClick={() => setViewStatus(option.value)}
+            >
+              {option.label.replace(/ albums$/, '')}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+      <Checkbox
+        className="mb-1"
+        label={t(
+          'album_filter.albums.only_featured',
+          'Featured albums only'
+        )}
+        checked={onlyFeatured}
+        onChange={event => setOnlyFeatured(event.target.checked)}
+      />
+      <SortingOptions
+        label={t('album_filter.albums.sort', 'Album sort')}
+        directionLabel={t(
+          'album_filter.albums.sort_direction',
+          'Album sort direction'
+        )}
+        idPrefix="album_sort"
+        ordering={ordering}
+        setOrdering={setOrdering}
+        items={sortOptions}
+      />
+    </>
+  )
+}
+
 type AlbumFilterProps = {
   onlyFavorites: boolean
   setOnlyFavorites?(favorites: boolean): void
   ordering?: MediaOrdering
   setOrdering?: SetOrderingFn
   sortingOptions?: SortingOption[]
+  albumEngagement?: AlbumEngagementParams
   albumId?: string
   onAlbumScanComplete?(): Promise<unknown> | unknown
 }
@@ -145,6 +260,7 @@ const AlbumFilter = ({
   setOrdering,
   ordering,
   sortingOptions,
+  albumEngagement,
   albumId,
   onAlbumScanComplete,
 }: AlbumFilterProps) => {
@@ -163,6 +279,7 @@ const AlbumFilter = ({
           setOnlyFavorites={setOnlyFavorites}
         />
       )}
+      {albumEngagement && <AlbumEngagementControls {...albumEngagement} />}
       {albumId && onAlbumScanComplete && (
         <AlbumScanControl
           albumId={albumId}

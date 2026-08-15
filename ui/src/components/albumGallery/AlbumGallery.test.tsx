@@ -15,11 +15,23 @@ const albumWithSections: AlbumGalleryFields = {
   __typename: 'Album',
   id: 'parent',
   title: 'Parent album',
+  viewerState: {
+    __typename: 'AlbumViewerState',
+    featured: false,
+    viewCount: 0,
+    lastViewedAt: null,
+  },
   subAlbums: [
     {
       __typename: 'Album',
       id: 'child',
       title: 'Child album',
+      viewerState: {
+        __typename: 'AlbumViewerState',
+        featured: false,
+        viewCount: 0,
+        lastViewedAt: null,
+      },
       thumbnail: {
         __typename: 'Media',
         id: 'child-cover',
@@ -36,6 +48,7 @@ const albumWithSections: AlbumGalleryFields = {
     {
       __typename: 'Media',
       id: 'photo',
+      title: 'photo.jpg',
       type: MediaType.Photo,
       blurhash: null,
       thumbnail: {

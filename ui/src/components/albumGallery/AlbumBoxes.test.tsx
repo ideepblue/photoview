@@ -2,6 +2,10 @@ import React from 'react'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
+import { MockedProvider } from '@apollo/client/testing'
+import {
+  SET_ALBUM_FEATURED_MUTATION,
+} from '../album/AlbumFeaturedButton'
 
 import { albumQuery_album_subAlbums } from '../../Pages/AlbumPage/__generated__/albumQuery'
 import AlbumBoxes from './AlbumBoxes'
@@ -312,4 +316,81 @@ test('uses a compact horizontal card in list mode', async () => {
   )
   expect(screen.getByTestId('album-cover-frame')).toHaveClass('h-20', 'w-20')
   expect(screen.queryAllByTestId('album-lane')).toHaveLength(0)
+})
+
+test('shows a view count and featured control without navigating the card', async () => {
+  const user = userEvent.setup()
+  const engagedAlbum = {
+    ...album,
+    viewerState: {
+      __typename: 'AlbumViewerState',
+      featured: false,
+      viewCount: 7,
+      lastViewedAt: '2026-08-16T12:00:00Z',
+    },
+  } as albumQuery_album_subAlbums
+
+  render(
+    <MockedProvider
+      addTypename={false}
+      mocks={[
+        {
+          request: {
+            query: SET_ALBUM_FEATURED_MUTATION,
+            variables: { albumId: 'album-1', featured: true },
+          },
+          result: {
+            data: {
+              setAlbumFeatured: {
+                __typename: 'AlbumViewerState',
+                featured: true,
+                viewCount: 7,
+                lastViewedAt: '2026-08-16T12:00:00Z',
+              },
+            },
+          },
+        },
+      ]}
+    >
+      <MemoryRouter initialEntries={['/albums']}>
+        <AlbumBoxes albums={[engagedAlbum]} />
+      </MemoryRouter>
+    </MockedProvider>
+  )
+
+  expect(screen.getByLabelText('Viewed 7 times')).toBeVisible()
+  expect(screen.getByRole('link', { name: /Portrait album/ })).toHaveAttribute(
+    'href',
+    '/album/album-1'
+  )
+
+  await user.click(
+    screen.getByRole('button', { name: 'Add album to featured' })
+  )
+
+  expect(
+    screen.getByRole('link', { name: /Portrait album/ })
+  ).toBeInTheDocument()
+})
+
+test('hides the viewed badge when the count is zero', () => {
+  const unviewedAlbum = {
+    ...album,
+    viewerState: {
+      __typename: 'AlbumViewerState',
+      featured: false,
+      viewCount: 0,
+      lastViewedAt: null,
+    },
+  } as albumQuery_album_subAlbums
+
+  render(
+    <MockedProvider>
+      <MemoryRouter>
+        <AlbumBoxes albums={[unviewedAlbum]} />
+      </MemoryRouter>
+    </MockedProvider>
+  )
+
+  expect(screen.queryByLabelText(/Viewed .* times/)).not.toBeInTheDocument()
 })

@@ -1,4 +1,4 @@
-import React, { useContext } from 'react'
+import React, { useContext, useRef } from 'react'
 import styled from 'styled-components'
 import { MediaThumbnail, MediaPlaceholder } from './MediaThumbnail'
 import PresentView from './presentView/PresentView'
@@ -59,10 +59,16 @@ type MediaGalleryProps = {
   loading: boolean
   mediaState: MediaGalleryState
   dispatchMedia: React.Dispatch<PhotoGalleryAction>
+  albumId?: string
 }
 
-const MediaGallery = ({ mediaState, dispatchMedia }: MediaGalleryProps) => {
+const MediaGallery = ({
+  mediaState,
+  dispatchMedia,
+  albumId,
+}: MediaGalleryProps) => {
   const [markFavorite] = useMarkFavoriteMutation()
+  const reportedAlbums = useRef(new Map<string, number>())
 
   const { media, activeIndex, presenting } = mediaState
 
@@ -114,6 +120,8 @@ const MediaGallery = ({ mediaState, dispatchMedia }: MediaGalleryProps) => {
           media={mediaState.media}
           activeIndex={mediaState.activeIndex}
           dispatchMedia={dispatchMedia}
+          albumId={albumId}
+          reportedAlbums={reportedAlbums.current}
         />
       )}
     </>

@@ -27,6 +27,20 @@ type UserMediaData struct {
 	Favorite bool `gorm:"not null;default:false"`
 }
 
+type UserAlbumData struct {
+	ModelTimestamps
+	UserID int  `gorm:"primaryKey;autoIncrement:false;index:idx_user_album_featured,priority:1;index:idx_user_album_view_count,priority:1;index:idx_user_album_last_viewed,priority:1"`
+	User   User `gorm:"constraint:OnDelete:CASCADE;"`
+
+	AlbumID int   `gorm:"primaryKey;autoIncrement:false"`
+	Album   Album `gorm:"constraint:OnDelete:CASCADE;"`
+
+	Featured      bool       `gorm:"not null;default:false;index:idx_user_album_featured,priority:2"`
+	ViewCount     int64      `gorm:"not null;default:0;index:idx_user_album_view_count,priority:2"`
+	LastViewedAt  *time.Time `gorm:"index:idx_user_album_last_viewed,priority:2"`
+	LastCountedAt *time.Time
+}
+
 type UserAlbums struct {
 	UserID  int `gorm:"primaryKey;autoIncrement:false;constraint:OnDelete:CASCADE;"`
 	AlbumID int `gorm:"primaryKey;autoIncrement:false;constraint:OnDelete:CASCADE;"`

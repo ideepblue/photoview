@@ -3,11 +3,29 @@
 // @generated
 // This file was automatically generated and should not be edited.
 
-import { OrderDirection, MediaType } from "./../../../__generated__/globalTypes";
+import {
+  OrderDirection,
+  AlbumViewFilter,
+  MediaType,
+} from "./../../../__generated__/globalTypes";
 
 // ====================================================
 // GraphQL query operation: albumQuery
 // ====================================================
+
+export interface albumQuery_album_viewerState {
+  __typename: "AlbumViewerState";
+  featured: boolean;
+  viewCount: number;
+  lastViewedAt: Time | null;
+}
+
+export interface albumQuery_album_subAlbums_viewerState {
+  __typename: "AlbumViewerState";
+  featured: boolean;
+  viewCount: number;
+  lastViewedAt: Time | null;
+}
 
 export interface albumQuery_album_subAlbums_thumbnail_thumbnail {
   __typename: "MediaURL";
@@ -38,6 +56,10 @@ export interface albumQuery_album_subAlbums {
   __typename: "Album";
   id: string;
   title: string;
+  /**
+   * Viewing and personal curation state for the logged-in user
+   */
+  viewerState: albumQuery_album_subAlbums_viewerState;
   /**
    * An image in this album used for previewing this album
    */
@@ -105,6 +127,10 @@ export interface albumQuery_album {
   id: string;
   title: string;
   /**
+   * Viewing and personal curation state for the logged-in user
+   */
+  viewerState: albumQuery_album_viewerState;
+  /**
    * The albums contained in this album
    */
   subAlbums: albumQuery_album_subAlbums[];
@@ -129,4 +155,8 @@ export interface albumQueryVariables {
   orderDirection?: OrderDirection | null;
   limit?: number | null;
   offset?: number | null;
+  albumOrderBy?: string | null;
+  albumOrderDirection?: OrderDirection | null;
+  albumViewFilter?: AlbumViewFilter | null;
+  onlyFeaturedAlbums?: boolean | null;
 }

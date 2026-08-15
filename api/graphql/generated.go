@@ -56,9 +56,16 @@ type ComplexityRoot struct {
 		ParentAlbum func(childComplexity int) int
 		Path        func(childComplexity int) int
 		Shares      func(childComplexity int) int
-		SubAlbums   func(childComplexity int, order *models.Ordering, paginate *models.Pagination) int
+		SubAlbums   func(childComplexity int, order *models.Ordering, paginate *models.Pagination, viewFilter *models.AlbumViewFilter, onlyFeatured *bool) int
 		Thumbnail   func(childComplexity int) int
 		Title       func(childComplexity int) int
+		ViewerState func(childComplexity int) int
+	}
+
+	AlbumViewerState struct {
+		Featured     func(childComplexity int) int
+		LastViewedAt func(childComplexity int) int
+		ViewCount    func(childComplexity int) int
 	}
 
 	AuthorizeResult struct {
@@ -154,11 +161,13 @@ type ComplexityRoot struct {
 		MoveImageFaces              func(childComplexity int, imageFaceIDs []int, destinationFaceGroupID int) int
 		ProtectShareToken           func(childComplexity int, token string, password *string) int
 		RecognizeUnlabeledFaces     func(childComplexity int) int
+		RecordAlbumView             func(childComplexity int, albumID int, mediaID int) int
 		ResetAlbumCover             func(childComplexity int, albumID int) int
 		ScanAlbum                   func(childComplexity int, albumID int, recursive bool, forceRefresh bool) int
 		ScanAll                     func(childComplexity int) int
 		ScanUser                    func(childComplexity int, userID int) int
 		SetAlbumCover               func(childComplexity int, coverID int, albumID *int) int
+		SetAlbumFeatured            func(childComplexity int, albumID int, featured bool) int
 		SetExpireShareToken         func(childComplexity int, token string, expire *time.Time) int
 		SetFaceGroupLabel           func(childComplexity int, faceGroupID int, label *string) int
 		SetPeriodicScanInterval     func(childComplexity int, interval int) int
@@ -188,7 +197,7 @@ type ComplexityRoot struct {
 		MapboxToken                func(childComplexity int) int
 		Media                      func(childComplexity int, id int, tokenCredentials *models.ShareTokenCredentials) int
 		MediaList                  func(childComplexity int, ids []int) int
-		MyAlbums                   func(childComplexity int, order *models.Ordering, paginate *models.Pagination, onlyRoot *bool, showEmpty *bool, onlyWithFavorites *bool) int
+		MyAlbums                   func(childComplexity int, order *models.Ordering, paginate *models.Pagination, onlyRoot *bool, showEmpty *bool, onlyWithFavorites *bool, viewFilter *models.AlbumViewFilter, onlyFeatured *bool) int
 		MyFaceGroups               func(childComplexity int, paginate *models.Pagination) int
 		MyMedia                    func(childComplexity int, order *models.Ordering, paginate *models.Pagination) int
 		MyMediaGeoJSON             func(childComplexity int) int
@@ -277,7 +286,8 @@ type ComplexityRoot struct {
 
 type AlbumResolver interface {
 	Media(ctx context.Context, obj *models.Album, order *models.Ordering, paginate *models.Pagination, onlyFavorites *bool) ([]*models.Media, error)
-	SubAlbums(ctx context.Context, obj *models.Album, order *models.Ordering, paginate *models.Pagination) ([]*models.Album, error)
+	SubAlbums(ctx context.Context, obj *models.Album, order *models.Ordering, paginate *models.Pagination, viewFilter *models.AlbumViewFilter, onlyFeatured *bool) ([]*models.Album, error)
+	ViewerState(ctx context.Context, obj *models.Album) (*models.AlbumViewerState, error)
 
 	Owner(ctx context.Context, obj *models.Album) (*models.User, error)
 
@@ -311,6 +321,8 @@ type MediaResolver interface {
 type MutationResolver interface {
 	ResetAlbumCover(ctx context.Context, albumID int) (*models.Album, error)
 	SetAlbumCover(ctx context.Context, coverID int, albumID *int) (*models.Album, error)
+	RecordAlbumView(ctx context.Context, albumID int, mediaID int) (*models.AlbumViewerState, error)
+	SetAlbumFeatured(ctx context.Context, albumID int, featured bool) (*models.AlbumViewerState, error)
 	SetFaceGroupLabel(ctx context.Context, faceGroupID int, label *string) (*models.FaceGroup, error)
 	CombineFaceGroups(ctx context.Context, destinationFaceGroupID int, sourceFaceGroupIDs []int) (*models.FaceGroup, error)
 	MoveImageFaces(ctx context.Context, imageFaceIDs []int, destinationFaceGroupID int) (*models.FaceGroup, error)
@@ -338,7 +350,7 @@ type MutationResolver interface {
 	ChangeUserPreferences(ctx context.Context, language *string) (*models.UserPreferences, error)
 }
 type QueryResolver interface {
-	MyAlbums(ctx context.Context, order *models.Ordering, paginate *models.Pagination, onlyRoot *bool, showEmpty *bool, onlyWithFavorites *bool) ([]*models.Album, error)
+	MyAlbums(ctx context.Context, order *models.Ordering, paginate *models.Pagination, onlyRoot *bool, showEmpty *bool, onlyWithFavorites *bool, viewFilter *models.AlbumViewFilter, onlyFeatured *bool) ([]*models.Album, error)
 	Album(ctx context.Context, id int, tokenCredentials *models.ShareTokenCredentials) (*models.Album, error)
 	MyFaceGroups(ctx context.Context, paginate *models.Pagination) ([]*models.FaceGroup, error)
 	FaceGroup(ctx context.Context, id int) (*models.FaceGroup, error)
@@ -447,7 +459,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Album.SubAlbums(childComplexity, args["order"].(*models.Ordering), args["paginate"].(*models.Pagination)), true
+		return e.ComplexityRoot.Album.SubAlbums(childComplexity, args["order"].(*models.Ordering), args["paginate"].(*models.Pagination), args["viewFilter"].(*models.AlbumViewFilter), args["onlyFeatured"].(*bool)), true
 	case "Album.thumbnail":
 		if e.ComplexityRoot.Album.Thumbnail == nil {
 			break
@@ -460,6 +472,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Album.Title(childComplexity), true
+	case "Album.viewerState":
+		if e.ComplexityRoot.Album.ViewerState == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Album.ViewerState(childComplexity), true
+
+	case "AlbumViewerState.featured":
+		if e.ComplexityRoot.AlbumViewerState.Featured == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AlbumViewerState.Featured(childComplexity), true
+	case "AlbumViewerState.lastViewedAt":
+		if e.ComplexityRoot.AlbumViewerState.LastViewedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AlbumViewerState.LastViewedAt(childComplexity), true
+	case "AlbumViewerState.viewCount":
+		if e.ComplexityRoot.AlbumViewerState.ViewCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AlbumViewerState.ViewCount(childComplexity), true
 
 	case "AuthorizeResult.status":
 		if e.ComplexityRoot.AuthorizeResult.Status == nil {
@@ -920,6 +957,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RecognizeUnlabeledFaces(childComplexity), true
+	case "Mutation.recordAlbumView":
+		if e.ComplexityRoot.Mutation.RecordAlbumView == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_recordAlbumView_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RecordAlbumView(childComplexity, args["albumID"].(int), args["mediaID"].(int)), true
 	case "Mutation.resetAlbumCover":
 		if e.ComplexityRoot.Mutation.ResetAlbumCover == nil {
 			break
@@ -970,6 +1018,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.SetAlbumCover(childComplexity, args["coverID"].(int), args["albumID"].(*int)), true
+	case "Mutation.setAlbumFeatured":
+		if e.ComplexityRoot.Mutation.SetAlbumFeatured == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setAlbumFeatured_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetAlbumFeatured(childComplexity, args["albumID"].(int), args["featured"].(bool)), true
 	case "Mutation.setExpireShareToken":
 		if e.ComplexityRoot.Mutation.SetExpireShareToken == nil {
 			break
@@ -1191,7 +1250,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.MyAlbums(childComplexity, args["order"].(*models.Ordering), args["paginate"].(*models.Pagination), args["onlyRoot"].(*bool), args["showEmpty"].(*bool), args["onlyWithFavorites"].(*bool)), true
+		return e.ComplexityRoot.Query.MyAlbums(childComplexity, args["order"].(*models.Ordering), args["paginate"].(*models.Pagination), args["onlyRoot"].(*bool), args["showEmpty"].(*bool), args["onlyWithFavorites"].(*bool), args["viewFilter"].(*models.AlbumViewFilter), args["onlyFeatured"].(*bool)), true
 	case "Query.myFaceGroups":
 		if e.ComplexityRoot.Query.MyFaceGroups == nil {
 			break
@@ -1692,6 +1751,8 @@ func (ec *executionContext) childFields_Album(ctx context.Context, field graphql
 		return ec.fieldContext_Album_media(ctx, field)
 	case "subAlbums":
 		return ec.fieldContext_Album_subAlbums(ctx, field)
+	case "viewerState":
+		return ec.fieldContext_Album_viewerState(ctx, field)
 	case "parentAlbum":
 		return ec.fieldContext_Album_parentAlbum(ctx, field)
 	case "owner":
@@ -1706,6 +1767,18 @@ func (ec *executionContext) childFields_Album(ctx context.Context, field graphql
 		return ec.fieldContext_Album_shares(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Album", field.Name)
+}
+
+func (ec *executionContext) childFields_AlbumViewerState(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "featured":
+		return ec.fieldContext_AlbumViewerState_featured(ctx, field)
+	case "viewCount":
+		return ec.fieldContext_AlbumViewerState_viewCount(ctx, field)
+	case "lastViewedAt":
+		return ec.fieldContext_AlbumViewerState_lastViewedAt(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type AlbumViewerState", field.Name)
 }
 
 func (ec *executionContext) childFields_AuthorizeResult(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -2169,6 +2242,22 @@ func (ec *executionContext) field_Album_subAlbums_args(ctx context.Context, rawA
 		return nil, err
 	}
 	args["paginate"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "viewFilter",
+		func(ctx context.Context, v any) (*models.AlbumViewFilter, error) {
+			return ec.unmarshalOAlbumViewFilter2ᚖgithubᚗcomᚋphotoviewᚋphotoviewᚋapiᚋgraphqlᚋmodelsᚐAlbumViewFilter(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["viewFilter"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "onlyFeatured",
+		func(ctx context.Context, v any) (*bool, error) {
+			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["onlyFeatured"] = arg3
 	return args, nil
 }
 
@@ -2420,6 +2509,28 @@ func (ec *executionContext) field_Mutation_protectShareToken_args(ctx context.Co
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_recordAlbumView_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "albumID",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNID2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["albumID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "mediaID",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNID2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["mediaID"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_resetAlbumCover_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -2497,6 +2608,28 @@ func (ec *executionContext) field_Mutation_setAlbumCover_args(ctx context.Contex
 		return nil, err
 	}
 	args["albumID"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setAlbumFeatured_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "albumID",
+		func(ctx context.Context, v any) (int, error) {
+			return ec.unmarshalNID2int(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["albumID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "featured",
+		func(ctx context.Context, v any) (bool, error) {
+			return ec.unmarshalNBoolean2bool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["featured"] = arg1
 	return args, nil
 }
 
@@ -2881,6 +3014,22 @@ func (ec *executionContext) field_Query_myAlbums_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["onlyWithFavorites"] = arg4
+	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "viewFilter",
+		func(ctx context.Context, v any) (*models.AlbumViewFilter, error) {
+			return ec.unmarshalOAlbumViewFilter2ᚖgithubᚗcomᚋphotoviewᚋphotoviewᚋapiᚋgraphqlᚋmodelsᚐAlbumViewFilter(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["viewFilter"] = arg5
+	arg6, err := graphql.ProcessArgField(ctx, rawArgs, "onlyFeatured",
+		func(ctx context.Context, v any) (*bool, error) {
+			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["onlyFeatured"] = arg6
 	return args, nil
 }
 
@@ -3190,7 +3339,7 @@ func (ec *executionContext) _Album_subAlbums(ctx context.Context, field graphql.
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Album().SubAlbums(ctx, obj, fc.Args["order"].(*models.Ordering), fc.Args["paginate"].(*models.Pagination))
+			return ec.Resolvers.Album().SubAlbums(ctx, obj, fc.Args["order"].(*models.Ordering), fc.Args["paginate"].(*models.Pagination), fc.Args["viewFilter"].(*models.AlbumViewFilter), fc.Args["onlyFeatured"].(*bool))
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v []*models.Album) graphql.Marshaler {
@@ -3220,6 +3369,51 @@ func (ec *executionContext) fieldContext_Album_subAlbums(ctx context.Context, fi
 	if fc.Args, err = ec.field_Album_subAlbums_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Album_viewerState(ctx context.Context, field graphql.CollectedField, obj *models.Album) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Album_viewerState(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Album().ViewerState(ctx, obj)
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.IsAuthorized == nil {
+					var zeroVal *models.AlbumViewerState
+					return zeroVal, errors.New("directive isAuthorized is not implemented")
+				}
+				return ec.Directives.IsAuthorized(ctx, obj, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *models.AlbumViewerState) graphql.Marshaler {
+			return ec.marshalNAlbumViewerState2ᚖgithubᚗcomᚋphotoviewᚋphotoviewᚋapiᚋgraphqlᚋmodelsᚐAlbumViewerState(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Album_viewerState(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Album",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AlbumViewerState(ctx, field)
+		},
 	}
 	return fc, nil
 }
@@ -3405,6 +3599,75 @@ func (ec *executionContext) fieldContext_Album_shares(_ context.Context, field g
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _AlbumViewerState_featured(ctx context.Context, field graphql.CollectedField, obj *models.AlbumViewerState) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AlbumViewerState_featured(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Featured, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v bool) graphql.Marshaler {
+			return ec.marshalNBoolean2bool(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AlbumViewerState_featured(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AlbumViewerState", field, false, false, errors.New("field of type Boolean does not have child fields"))
+}
+
+func (ec *executionContext) _AlbumViewerState_viewCount(ctx context.Context, field graphql.CollectedField, obj *models.AlbumViewerState) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AlbumViewerState_viewCount(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ViewCount, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v int) graphql.Marshaler {
+			return ec.marshalNInt2int(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_AlbumViewerState_viewCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AlbumViewerState", field, false, false, errors.New("field of type Int does not have child fields"))
+}
+
+func (ec *executionContext) _AlbumViewerState_lastViewedAt(ctx context.Context, field graphql.CollectedField, obj *models.AlbumViewerState) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_AlbumViewerState_lastViewedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.LastViewedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *time.Time) graphql.Marshaler {
+			return ec.marshalOTime2ᚖtimeᚐTime(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_AlbumViewerState_lastViewedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("AlbumViewerState", field, false, false, errors.New("field of type Time does not have child fields"))
 }
 
 func (ec *executionContext) _AuthorizeResult_success(ctx context.Context, field graphql.CollectedField, obj *models.AuthorizeResult) (ret graphql.Marshaler) {
@@ -4890,6 +5153,120 @@ func (ec *executionContext) fieldContext_Mutation_setAlbumCover(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_setAlbumCover_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_recordAlbumView(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_recordAlbumView(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RecordAlbumView(ctx, fc.Args["albumID"].(int), fc.Args["mediaID"].(int))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.IsAuthorized == nil {
+					var zeroVal *models.AlbumViewerState
+					return zeroVal, errors.New("directive isAuthorized is not implemented")
+				}
+				return ec.Directives.IsAuthorized(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *models.AlbumViewerState) graphql.Marshaler {
+			return ec.marshalNAlbumViewerState2ᚖgithubᚗcomᚋphotoviewᚋphotoviewᚋapiᚋgraphqlᚋmodelsᚐAlbumViewerState(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_recordAlbumView(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AlbumViewerState(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_recordAlbumView_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setAlbumFeatured(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_setAlbumFeatured(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetAlbumFeatured(ctx, fc.Args["albumID"].(int), fc.Args["featured"].(bool))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.IsAuthorized == nil {
+					var zeroVal *models.AlbumViewerState
+					return zeroVal, errors.New("directive isAuthorized is not implemented")
+				}
+				return ec.Directives.IsAuthorized(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		func(ctx context.Context, selections ast.SelectionSet, v *models.AlbumViewerState) graphql.Marshaler {
+			return ec.marshalNAlbumViewerState2ᚖgithubᚗcomᚋphotoviewᚋphotoviewᚋapiᚋgraphqlᚋmodelsᚐAlbumViewerState(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_setAlbumFeatured(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_AlbumViewerState(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setAlbumFeatured_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -6465,7 +6842,7 @@ func (ec *executionContext) _Query_myAlbums(ctx context.Context, field graphql.C
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().MyAlbums(ctx, fc.Args["order"].(*models.Ordering), fc.Args["paginate"].(*models.Pagination), fc.Args["onlyRoot"].(*bool), fc.Args["showEmpty"].(*bool), fc.Args["onlyWithFavorites"].(*bool))
+			return ec.Resolvers.Query().MyAlbums(ctx, fc.Args["order"].(*models.Ordering), fc.Args["paginate"].(*models.Pagination), fc.Args["onlyRoot"].(*bool), fc.Args["showEmpty"].(*bool), fc.Args["onlyWithFavorites"].(*bool), fc.Args["viewFilter"].(*models.AlbumViewFilter), fc.Args["onlyFeatured"].(*bool))
 		},
 		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
 			directive0 := next
@@ -9688,6 +10065,44 @@ func (ec *executionContext) _Album(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "viewerState":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Album_viewerState(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.IsDeferred() {
+				deferredFieldSet.AddField(field)
+				fieldIndex := len(deferredFieldSet.Values) - 1
+				deferredFieldSet.Concurrently(fieldIndex, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, deferredFieldSet)
+				})
+
+				for _, deferrable := range field.Deferrables {
+					view, ok := deferLabelToView[deferrable.Label]
+					if !ok {
+						view = deferredFieldSet.NewView()
+						deferLabelToView[deferrable.Label] = view
+					}
+					view.AddIndices(fieldIndex)
+				}
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "parentAlbum":
 			out.Values[i] = ec._Album_parentAlbum(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
@@ -9850,6 +10265,54 @@ func (ec *executionContext) _Album(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var albumViewerStateImplementors = []string{"AlbumViewerState"}
+
+func (ec *executionContext) _AlbumViewerState(ctx context.Context, sel ast.SelectionSet, obj *models.AlbumViewerState) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, albumViewerStateImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AlbumViewerState")
+		case "featured":
+			out.Values[i] = ec._AlbumViewerState_featured(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "viewCount":
+			out.Values[i] = ec._AlbumViewerState_viewCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lastViewedAt":
+			out.Values[i] = ec._AlbumViewerState_lastViewedAt(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -10925,6 +11388,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "setAlbumCover":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_setAlbumCover(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "recordAlbumView":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_recordAlbumView(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setAlbumFeatured":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setAlbumFeatured(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -12698,6 +13175,20 @@ func (ec *executionContext) marshalNAlbum2ᚖgithubᚗcomᚋphotoviewᚋphotovie
 	return ec._Album(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNAlbumViewerState2githubᚗcomᚋphotoviewᚋphotoviewᚋapiᚋgraphqlᚋmodelsᚐAlbumViewerState(ctx context.Context, sel ast.SelectionSet, v models.AlbumViewerState) graphql.Marshaler {
+	return ec._AlbumViewerState(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAlbumViewerState2ᚖgithubᚗcomᚋphotoviewᚋphotoviewᚋapiᚋgraphqlᚋmodelsᚐAlbumViewerState(ctx context.Context, sel ast.SelectionSet, v *models.AlbumViewerState) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AlbumViewerState(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNAny2interface(ctx context.Context, v any) (any, error) {
 	res, err := graphql.UnmarshalAny(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -13308,6 +13799,22 @@ func (ec *executionContext) marshalOAlbum2ᚖgithubᚗcomᚋphotoviewᚋphotovie
 		return graphql.Null
 	}
 	return ec._Album(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOAlbumViewFilter2ᚖgithubᚗcomᚋphotoviewᚋphotoviewᚋapiᚋgraphqlᚋmodelsᚐAlbumViewFilter(ctx context.Context, v any) (*models.AlbumViewFilter, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(models.AlbumViewFilter)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAlbumViewFilter2ᚖgithubᚗcomᚋphotoviewᚋphotoviewᚋapiᚋgraphqlᚋmodelsᚐAlbumViewFilter(ctx context.Context, sel ast.SelectionSet, v *models.AlbumViewFilter) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOAuthorizeResult2ᚖgithubᚗcomᚋphotoviewᚋphotoviewᚋapiᚋgraphqlᚋmodelsᚐAuthorizeResult(ctx context.Context, sel ast.SelectionSet, v *models.AuthorizeResult) graphql.Marshaler {

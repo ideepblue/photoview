@@ -7,6 +7,12 @@
 // START Enums and Input Objects
 //==============================================================
 
+export enum AlbumViewFilter {
+  ALL = "ALL",
+  UNVIEWED = "UNVIEWED",
+  VIEWED = "VIEWED",
+}
+
 /**
  * Supported language translations of the user interface
  */

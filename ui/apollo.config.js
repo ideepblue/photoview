@@ -30,6 +30,8 @@ try {
 
 module.exports = {
   client: {
+    includes: ['src/**/*.ts', 'src/**/*.tsx'],
+    excludes: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     service: {
       name: 'photoview',
       localSchemaFile: outputPath,

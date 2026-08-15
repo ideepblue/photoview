@@ -6,6 +6,7 @@ import { closePresentModeAction, GalleryAction } from '../mediaGalleryReducer'
 import { PresentMediaFields } from './PresentMedia'
 import { SidebarContext } from '../../sidebar/Sidebar'
 import MediaSidebar from '../../sidebar/MediaSidebar/MediaSidebar'
+import { AlbumViewTracking } from './useAlbumViewTracking'
 
 const StyledContainer = styled.div`
   position: fixed;
@@ -32,6 +33,8 @@ type PresentViewProps = {
   circular?: boolean
   dispatchMedia: React.Dispatch<GalleryAction>
   disableSaveCloseInHistory?: boolean
+  albumId?: string
+  reportedAlbums?: Map<string, number>
 }
 
 const PresentView = ({
@@ -42,6 +45,8 @@ const PresentView = ({
   circular = true,
   dispatchMedia,
   disableSaveCloseInHistory,
+  albumId,
+  reportedAlbums,
 }: PresentViewProps) => {
   const { updateSidebar } = useContext(SidebarContext)
 
@@ -91,7 +96,7 @@ const PresentView = ({
       ? media[0]
       : null
 
-  return (
+  const viewer = (onViewingActive?: (active: boolean) => void) => (
     <StyledContainer className={className}>
       <PreventScroll />
       <PresentNavigationOverlay
@@ -110,6 +115,7 @@ const PresentView = ({
             previousMedia={previousMedia}
             nextMedia={nextMedia}
             imageLoaded={imageLoaded}
+            onViewingActive={onViewingActive}
             onNavigate={type => dispatchMedia({ type })}
             onTap={showControls}
           />
@@ -117,6 +123,20 @@ const PresentView = ({
       </PresentNavigationOverlay>
     </StyledContainer>
   )
+
+  if (albumId) {
+    return (
+      <AlbumViewTracking
+        albumId={albumId}
+        mediaId={currentMedia.id}
+        reportedAlbums={reportedAlbums}
+      >
+        {viewer}
+      </AlbumViewTracking>
+    )
+  }
+
+  return viewer()
 }
 
 export default PresentView

@@ -3,11 +3,21 @@
 // @generated
 // This file was automatically generated and should not be edited.
 
-import { OrderDirection } from "./../../../__generated__/globalTypes";
+import {
+  OrderDirection,
+  AlbumViewFilter,
+} from "./../../../__generated__/globalTypes";
 
 // ====================================================
 // GraphQL query operation: getMyAlbums
 // ====================================================
+
+export interface getMyAlbums_myAlbums_viewerState {
+  __typename: "AlbumViewerState";
+  featured: boolean;
+  viewCount: number;
+  lastViewedAt: Time | null;
+}
 
 export interface getMyAlbums_myAlbums_thumbnail_thumbnail {
   __typename: "MediaURL";
@@ -39,6 +49,10 @@ export interface getMyAlbums_myAlbums {
   id: string;
   title: string;
   /**
+   * Viewing and personal curation state for the logged-in user
+   */
+  viewerState: getMyAlbums_myAlbums_viewerState;
+  /**
    * An image in this album used for previewing this album
    */
   thumbnail: getMyAlbums_myAlbums_thumbnail | null;
@@ -54,4 +68,6 @@ export interface getMyAlbums {
 export interface getMyAlbumsVariables {
   orderBy?: string | null;
   orderDirection?: OrderDirection | null;
+  viewFilter?: AlbumViewFilter | null;
+  onlyFeatured?: boolean | null;
 }

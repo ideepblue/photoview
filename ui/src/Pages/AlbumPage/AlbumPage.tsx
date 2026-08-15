@@ -12,6 +12,8 @@ import { albumQuery, albumQueryVariables } from './__generated__/albumQuery'
 import useOrderingParams from '../../hooks/useOrderingParams'
 import { useParams } from 'react-router-dom'
 import { isNil } from '../../helpers/utils'
+import useAlbumEngagementParams from '../../hooks/useAlbumEngagementParams'
+import { AlbumViewFilter } from '../../__generated__/globalTypes'
 
 const ALBUM_QUERY = gql`
   ${ALBUM_GALLERY_FRAGMENT}
@@ -23,6 +25,10 @@ const ALBUM_QUERY = gql`
     $orderDirection: OrderDirection
     $limit: Int
     $offset: Int
+    $albumOrderBy: String
+    $albumOrderDirection: OrderDirection
+    $albumViewFilter: AlbumViewFilter
+    $onlyFeaturedAlbums: Boolean
   ) {
     album(id: $id) {
       ...AlbumGalleryFields
@@ -42,6 +48,7 @@ function AlbumPage() {
 
   const urlParams = useURLParameters()
   const orderParams = useOrderingParams(urlParams, 'title')
+  const albumEngagement = useAlbumEngagementParams(urlParams)
 
   const onlyFavorites = urlParams.getParam('favorites') == '1' ? true : false
   const setOnlyFavorites = (favorites: boolean) =>
@@ -58,6 +65,15 @@ function AlbumPage() {
       orderDirection: orderParams.orderDirection,
       offset: 0,
       limit: 200,
+      albumOrderBy: albumEngagement.ordering.orderBy,
+      albumOrderDirection: albumEngagement.ordering.orderDirection,
+      albumViewFilter:
+        albumEngagement.viewStatus === 'viewed'
+          ? AlbumViewFilter.VIEWED
+          : albumEngagement.viewStatus === 'unviewed'
+          ? AlbumViewFilter.UNVIEWED
+          : null,
+      onlyFeaturedAlbums: albumEngagement.onlyFeatured,
     },
   })
 
@@ -110,6 +126,7 @@ function AlbumPage() {
           setOrdering={orderParams.setOrdering}
           ordering={orderParams}
           onAlbumScanComplete={() => refetch()}
+          albumEngagement={albumEngagement}
         />
         <PaginateLoader
           active={!finishedLoadingMore && !loading}

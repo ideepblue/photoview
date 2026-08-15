@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 
 import React from 'react'
 import { MediaType } from '../../../__generated__/globalTypes'
@@ -6,9 +6,11 @@ import { MediaGalleryFields } from '../__generated__/MediaGalleryFields'
 import PresentMedia from './PresentMedia'
 
 test('render present image', () => {
+  const onViewingActive = vi.fn()
   const media: MediaGalleryFields = {
     __typename: 'Media',
     id: '123',
+    title: 'sample_image.jpg',
     type: MediaType.Photo,
     highRes: null,
     blurhash: null,
@@ -22,7 +24,7 @@ test('render present image', () => {
     },
   }
 
-  render(<PresentMedia media={media} />)
+  render(<PresentMedia media={media} onViewingActive={onViewingActive} />)
 
   const thumbnail = screen.getByTestId('present-img-thumbnail')
   const highRes = screen.getByTestId('present-img-highres')
@@ -36,12 +38,17 @@ test('render present image', () => {
   expect(highRes).toHaveStyle({
     display: 'none',
   })
+
+  fireEvent.load(highRes)
+  expect(onViewingActive).toHaveBeenCalledWith(true)
 })
 
 test('render present video', () => {
+  const onViewingActive = vi.fn()
   const media: MediaGalleryFields = {
     __typename: 'Media',
     id: '123',
+    title: 'sample_video.mp4',
     type: MediaType.Video,
     highRes: null,
     blurhash: null,
@@ -58,7 +65,7 @@ test('render present video', () => {
     },
   }
 
-  render(<PresentMedia media={media} />)
+  render(<PresentMedia media={media} onViewingActive={onViewingActive} />)
 
   expect(screen.getByTestId('present-video')).toHaveAttribute(
     'poster',
@@ -68,4 +75,17 @@ test('render present video', () => {
   expect(
     screen.getByTestId('present-video').querySelector('source')
   ).toHaveAttribute('src', 'http://localhost:3000/sample_video.mp4')
+
+  const video = screen.getByTestId('present-video')
+  fireEvent.playing(video)
+  expect(onViewingActive).toHaveBeenLastCalledWith(true)
+
+  fireEvent.waiting(video)
+  expect(onViewingActive).toHaveBeenLastCalledWith(false)
+  fireEvent.playing(video)
+  fireEvent.pause(video)
+  expect(onViewingActive).toHaveBeenLastCalledWith(false)
+  fireEvent.playing(video)
+  fireEvent.ended(video)
+  expect(onViewingActive).toHaveBeenLastCalledWith(false)
 })
