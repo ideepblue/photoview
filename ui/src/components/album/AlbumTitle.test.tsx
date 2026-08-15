@@ -171,3 +171,57 @@ test('links a root album back to the albums page', async () => {
     1
   )
 })
+
+test('places personal curation with the mirrored mobile actions', async () => {
+  authToken.mockReturnValue('token-here')
+  window.localStorage.setItem(MOBILE_ALBUM_CONTEXT_BAR_HANDEDNESS_KEY, 'left')
+
+  render(
+    <MemoryRouter>
+      <MockedProvider
+        addTypename={false}
+        mocks={[
+          {
+            request: {
+              query: ALBUM_PATH_QUERY,
+              variables: { id: '3' },
+            },
+            result: {
+              data: {
+                album: {
+                  id: '3',
+                  path: [{ id: '2', title: 'Immediate parent' }],
+                },
+              },
+            },
+          },
+        ]}
+      >
+        <AlbumTitle
+          album={{
+            id: '3',
+            title: 'Curated child',
+            viewerState: {
+              featured: true,
+              viewCount: 5,
+              lastViewedAt: '2026-08-16T12:00:00Z',
+            },
+          }}
+          disableLink={true}
+        />
+      </MockedProvider>
+    </MemoryRouter>
+  )
+
+  await screen.findByRole('link', { name: 'Back to parent album' })
+  expect(
+    screen.getByRole('button', { name: 'Remove album from featured' })
+  ).toHaveAttribute('aria-pressed', 'true')
+
+  const contextBar = screen.getByTestId('album-context-bar')
+  expect(
+    Array.from(contextBar.children, child =>
+      child.getAttribute('data-context-part')
+    )
+  ).toEqual(['options', 'featured', 'back', 'content'])
+})

@@ -13,6 +13,7 @@ import { tailwindClassNames } from '../../helpers/utils'
 import { buttonStyles } from '../../primitives/form/Input'
 import { useTranslation } from 'react-i18next'
 import { useMobileAlbumContextBarHandedness } from './mobileAlbumContextBarPreferences'
+import AlbumFeaturedButton from './AlbumFeaturedButton'
 
 export const BreadcrumbList = styled.ol<{ hideLastArrow?: boolean }>`
   &
@@ -79,6 +80,10 @@ const AlbumContextBar = styled.div`
     [data-context-part='options'] {
       order: 2;
     }
+
+    [data-context-part='featured'] {
+      order: 2;
+    }
   }
 `
 
@@ -131,6 +136,11 @@ type AlbumTitleProps = {
   album?: {
     id: string
     title: string
+    viewerState?: {
+      featured: boolean
+      viewCount: number
+      lastViewedAt?: string | null
+    }
   }
   disableLink: boolean
 }
@@ -249,10 +259,24 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
     </button>
   ) : null
 
+  const featured =
+    isAuthenticated && album.viewerState ? (
+      <AlbumFeaturedButton
+        key="featured"
+        albumId={album.id}
+        featured={album.viewerState.featured}
+        viewCount={album.viewerState.viewCount}
+        lastViewedAt={album.viewerState.lastViewedAt}
+        contextPart="featured"
+        tone="surface"
+        className="rounded-md bg-gray-50 dark:bg-dark-bg2"
+      />
+    ) : null
+
   const contextParts =
     handedness === 'left'
-      ? [options, backNavigation, content]
-      : [content, backNavigation, options]
+      ? [options, featured, backNavigation, content]
+      : [content, backNavigation, featured, options]
 
   return (
     <AlbumContextBar

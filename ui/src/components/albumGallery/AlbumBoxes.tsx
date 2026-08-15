@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { albumQuery_album_subAlbums } from '../../Pages/AlbumPage/__generated__/albumQuery'
-import { AlbumBox } from './AlbumBox'
+import { AlbumBox, AlbumCardAlbum } from './AlbumBox'
 import {
   MobileAlbumLayout,
   readMobileAlbumLayout,
@@ -10,7 +9,7 @@ import {
 
 type AlbumBoxesProps = {
   error?: Error
-  albums?: albumQuery_album_subAlbums[]
+  albums?: AlbumCardAlbum[]
   getCustomLink?(albumID: string): string
 }
 
@@ -60,7 +59,7 @@ const validDimension = (value?: number | null) =>
   value && value > 0 ? value : undefined
 
 const estimateAlbumCardHeight = (
-  album: albumQuery_album_subAlbums | undefined,
+  album: AlbumCardAlbum | undefined,
   laneWidth: number
 ) => {
   const thumbnail = album?.thumbnail?.thumbnail
@@ -91,7 +90,7 @@ const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
   if (error) return <div>Error {error.message}</div>
 
   let albumCards: Array<{
-    album?: albumQuery_album_subAlbums
+    album?: AlbumCardAlbum
     element: React.ReactElement
   }> = []
 

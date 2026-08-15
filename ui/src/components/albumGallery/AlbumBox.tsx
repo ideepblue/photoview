@@ -1,9 +1,26 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ProtectedImage } from '../photoGallery/ProtectedMedia'
-import { albumQuery_album_subAlbums } from '../../Pages/AlbumPage/__generated__/albumQuery'
 import { useTranslation } from 'react-i18next'
 import { MobileAlbumLayout } from './mobileAlbumLayout'
+import AlbumFeaturedButton from '../album/AlbumFeaturedButton'
+
+export type AlbumCardAlbum = {
+  id: string
+  title: string
+  viewerState?: {
+    featured: boolean
+    viewCount: number
+    lastViewedAt?: string | null
+  }
+  thumbnail?: null | {
+    thumbnail?: null | {
+      url: string
+      width?: number | null
+      height?: number | null
+    }
+  }
+}
 
 interface AlbumBoxImageProps {
   src?: string
@@ -73,8 +90,24 @@ const AlbumFolderIcon = () => (
   </svg>
 )
 
+const ViewedIcon = () => (
+  <svg
+    aria-hidden="true"
+    className="h-4 w-4 flex-none"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+    <circle cx="12" cy="12" r="2.5" />
+  </svg>
+)
+
 type AlbumBoxProps = {
-  album?: albumQuery_album_subAlbums
+  album?: AlbumCardAlbum
   customLink?: string
   layout: MobileAlbumLayout
 }
@@ -103,28 +136,56 @@ export const AlbumBox = ({
       </span>
     </span>
   )
+  const viewCount = album?.viewerState?.viewCount || 0
+  const viewedLabel = t(
+    'album_engagement.view_count',
+    'Viewed {{count}} times',
+    { count: viewCount }
+  )
+  const viewedBadge =
+    viewCount > 0 ? (
+      <span
+        aria-label={viewedLabel}
+        className="absolute left-1 top-1 inline-flex min-h-[28px] items-center gap-1 rounded-full bg-black/65 px-2 py-1 text-xs font-medium text-white shadow-sm"
+      >
+        <ViewedIcon />
+        <span>{listLayout ? viewedLabel : viewCount}</span>
+      </span>
+    ) : null
 
   if (album) {
     return (
-      <Link
-        to={customLink || `/album/${album.id}`}
-        className={wrapperClasses}
-        {...props}
-      >
-        <AlbumBoxImage
-          src={thumbnail?.url}
-          width={thumbnail?.width}
-          height={thumbnail?.height}
-          layout={layout}
+      <div className="relative w-full xs:inline-block xs:w-auto">
+        <Link
+          to={customLink || `/album/${album.id}`}
+          className={wrapperClasses}
+          {...props}
         >
-          {badge}
-        </AlbumBoxImage>
-        <div className={listLayout ? 'min-w-0 flex-1' : 'mt-1'}>
-          <p className="whitespace-nowrap overflow-hidden overflow-ellipsis">
-            {album.title}
-          </p>
-        </div>
-      </Link>
+          <AlbumBoxImage
+            src={thumbnail?.url}
+            width={thumbnail?.width || undefined}
+            height={thumbnail?.height || undefined}
+            layout={layout}
+          >
+            {viewedBadge}
+            {badge}
+          </AlbumBoxImage>
+          <div className={listLayout ? 'min-w-0 flex-1' : 'mt-1'}>
+            <p className="whitespace-nowrap overflow-hidden overflow-ellipsis">
+              {album.title}
+            </p>
+          </div>
+        </Link>
+        {album.viewerState && (
+          <AlbumFeaturedButton
+            albumId={album.id}
+            featured={album.viewerState.featured}
+            viewCount={album.viewerState.viewCount}
+            lastViewedAt={album.viewerState.lastViewedAt}
+            className="absolute right-1 top-1 z-20 bg-black/65 shadow-sm"
+          />
+        )}
+      </div>
     )
   }
 
