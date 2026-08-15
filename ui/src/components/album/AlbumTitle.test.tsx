@@ -4,6 +4,7 @@ import React from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import * as authentication from '../../helpers/authentication'
 import AlbumTitle, { ALBUM_PATH_QUERY } from './AlbumTitle'
+import { MOBILE_ALBUM_CONTEXT_BAR_HANDEDNESS_KEY } from './mobileAlbumContextBarPreferences'
 
 vi.mock('../../helpers/authentication.ts')
 
@@ -11,6 +12,7 @@ const authToken = vi.mocked(authentication.authToken)
 
 beforeEach(() => {
   authToken.mockReset()
+  window.localStorage.clear()
 })
 
 test('allows the album header to grow when breadcrumb text wraps', () => {
@@ -71,20 +73,66 @@ test('links back to the immediate parent album', async () => {
   expect(backLink).toHaveClass('px-0', 'py-0')
   expect(backLink).not.toHaveClass('px-6', 'py-0.5')
 
-  const mobileBackLink = await screen.findByRole('link', {
-    name: 'Back to parent album from bottom',
-  })
-  expect(mobileBackLink).toHaveAttribute('href', '/album/2')
-  expect(mobileBackLink).toHaveAttribute(
-    'data-testid',
-    'mobile-parent-navigation'
+  expect(
+    screen.getAllByRole('link', { name: 'Back to parent album' })
+  ).toHaveLength(1)
+  expect(screen.getAllByRole('button', { name: 'Album options' })).toHaveLength(
+    1
   )
 
-  const iconPaths = Array.from(
-    mobileBackLink.querySelectorAll('svg path'),
-    path => path.getAttribute('d')
+  const contextBar = screen.getByTestId('album-context-bar')
+  expect(contextBar).toHaveAttribute('data-handedness', 'right')
+  expect(
+    Array.from(contextBar.children, child =>
+      child.getAttribute('data-context-part')
+    )
+  ).toEqual(['content', 'back', 'options'])
+
+  const iconPaths = Array.from(backLink.querySelectorAll('svg path'), path =>
+    path.getAttribute('d')
   )
   expect(iconPaths).toEqual(['M20 12H5', 'M12 19l-7-7 7-7'])
+})
+
+test('mirrors album actions to the left for the saved left-hand layout', async () => {
+  authToken.mockReturnValue('token-here')
+  window.localStorage.setItem(MOBILE_ALBUM_CONTEXT_BAR_HANDEDNESS_KEY, 'left')
+
+  render(
+    <MemoryRouter>
+      <MockedProvider
+        addTypename={false}
+        mocks={[
+          {
+            request: {
+              query: ALBUM_PATH_QUERY,
+              variables: { id: '3' },
+            },
+            result: {
+              data: {
+                album: {
+                  id: '3',
+                  path: [{ id: '2', title: 'Immediate parent' }],
+                },
+              },
+            },
+          },
+        ]}
+      >
+        <AlbumTitle album={{ id: '3', title: 'Child' }} disableLink={true} />
+      </MockedProvider>
+    </MemoryRouter>
+  )
+
+  await screen.findByRole('link', { name: 'Back to parent album' })
+
+  const contextBar = screen.getByTestId('album-context-bar')
+  expect(contextBar).toHaveAttribute('data-handedness', 'left')
+  expect(
+    Array.from(contextBar.children, child =>
+      child.getAttribute('data-context-part')
+    )
+  ).toEqual(['options', 'back', 'content'])
 })
 
 test('links a root album back to the albums page', async () => {
@@ -119,8 +167,7 @@ test('links a root album back to the albums page', async () => {
   expect(
     await screen.findByRole('link', { name: 'Back to albums' })
   ).toHaveAttribute('href', '/albums')
-
-  expect(
-    await screen.findByRole('link', { name: 'Back to albums from bottom' })
-  ).toHaveAttribute('href', '/albums')
+  expect(screen.getAllByRole('link', { name: 'Back to albums' })).toHaveLength(
+    1
+  )
 })

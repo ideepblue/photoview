@@ -20,6 +20,9 @@ test('AlbumPage defaults to title in ascending order', () => {
   expect(screen.getByText('Sort')).toBeInTheDocument()
   expect(screen.getByRole('combobox', { name: 'Sort' })).toHaveValue('title')
   expect(screen.getByLabelText('Sort direction')).toHaveTextContent('Ascending')
+  expect(
+    screen.getByText('Sort').closest('.mobile-album-context-bar-clearance')
+  ).not.toBeNull()
 
   screen.debug()
 })

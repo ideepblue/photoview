@@ -12,6 +12,7 @@ import { ReactComponent as GearIcon } from './icons/gear.svg'
 import { tailwindClassNames } from '../../helpers/utils'
 import { buttonStyles } from '../../primitives/form/Input'
 import { useTranslation } from 'react-i18next'
+import { useMobileAlbumContextBarHandedness } from './mobileAlbumContextBarPreferences'
 
 export const BreadcrumbList = styled.ol<{ hideLastArrow?: boolean }>`
   &
@@ -27,30 +28,73 @@ export const BreadcrumbList = styled.ol<{ hideLastArrow?: boolean }>`
   }
 `
 
-const MobileBackNavigation = styled(Link)`
+const AlbumContextBar = styled.div`
   position: fixed;
   z-index: 29;
+  right: 0.75rem;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem);
-  left: 50%;
+  left: 0.75rem;
   display: flex;
-  width: 52px;
-  height: 52px;
-  transform: translateX(-50%);
+  min-height: 4rem;
   align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 999px;
-  background: rgba(239, 93, 97, 0.94);
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid rgba(209, 213, 219, 0.8);
+  border-radius: 0.875rem;
+  background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 8px 24px rgba(34, 20, 22, 0.28);
-  color: white;
   backdrop-filter: blur(10px);
 
-  &:focus-visible {
-    outline: 3px solid rgba(96, 165, 250, 0.75);
-    outline-offset: 3px;
+  body.dark &,
+  html.dark & {
+    border-color: rgba(75, 85, 99, 0.9);
+    background: rgba(31, 35, 40, 0.96);
   }
 
   @media (min-width: 1024px) {
+    position: static;
+    z-index: auto;
+    min-height: 3.5rem;
+    margin-bottom: 1.5rem;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+
+    body.dark &,
+    html.dark & {
+      background: transparent;
+    }
+
+    [data-context-part='back'] {
+      order: 0;
+    }
+
+    [data-context-part='content'] {
+      order: 1;
+    }
+
+    [data-context-part='options'] {
+      order: 2;
+    }
+  }
+`
+
+const AlbumContextContent = styled.div`
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+
+  nav {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    white-space: nowrap;
+  }
+
+  nav::-webkit-scrollbar {
     display: none;
   }
 `
@@ -97,6 +141,7 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
   const { updateSidebar } = useContext(SidebarContext)
   const { t } = useTranslation()
   const isAuthenticated = Boolean(authToken())
+  const [handedness] = useMobileAlbumContextBarHandedness()
 
   useEffect(() => {
     if (!album) return
@@ -131,49 +176,35 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
   const parent = path[0]
 
   let backNavigation: React.ReactNode = null
-  let mobileBackNavigation: React.ReactNode = null
   if (isAuthenticated && disableLink) {
     if (pathData?.album) {
       const backTarget = parent ? `/album/${parent.id}` : '/albums'
       const backLabel = parent
         ? t('album_navigation.back_to_parent', 'Back to parent album')
         : t('album_navigation.back_to_albums', 'Back to albums')
-      const mobileBackLabel = parent
-        ? t(
-            'album_navigation.mobile_back_to_parent',
-            'Back to parent album from bottom'
-          )
-        : t(
-            'album_navigation.mobile_back_to_albums',
-            'Back to albums from bottom'
-          )
-
       backNavigation = (
         <Link
+          key="back"
           to={backTarget}
           aria-label={backLabel}
           title={backLabel}
+          data-context-part="back"
           className={tailwindClassNames(
             buttonStyles({}),
-            'h-11 w-11 mr-2 flex flex-shrink-0 items-center justify-center px-0 py-0'
+            'h-12 w-12 lg:h-11 lg:w-11 flex flex-shrink-0 items-center justify-center px-0 py-0'
           )}
         >
           <BackIcon />
         </Link>
       )
-      mobileBackNavigation = (
-        <MobileBackNavigation
-          to={backTarget}
-          aria-label={mobileBackLabel}
-          title={mobileBackLabel}
-          data-testid="mobile-parent-navigation"
-        >
-          <BackIcon />
-        </MobileBackNavigation>
-      )
     } else {
       backNavigation = (
-        <span className="h-11 w-11 mr-2 flex-shrink-0" aria-hidden="true" />
+        <span
+          key="back"
+          data-context-part="back"
+          className="h-12 w-12 lg:h-11 lg:w-11 flex-shrink-0"
+          aria-hidden="true"
+        />
       )
     }
   }
@@ -191,32 +222,46 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
     title = <Link to={`/album/${album.id}`}>{title}</Link>
   }
 
-  return (
-    <div className="flex mb-6 items-center min-h-[3.5rem]">
-      {backNavigation}
-      <div className="min-w-0 flex-1">
-        <nav aria-label="Album breadcrumb">
-          <BreadcrumbList>{breadcrumbSections}</BreadcrumbList>
-        </nav>
-        <h1 className="text-2xl truncate min-w-0">{title}</h1>
-      </div>
-      {authToken() && (
-        <button
-          title="Album options"
-          aria-label="Album options"
-          className={tailwindClassNames(
-            buttonStyles({}),
-            'px-2 py-2 ml-2 flex-shrink-0'
-          )}
-          onClick={() => {
-            updateSidebar(<AlbumSidebar albumId={album.id} />)
-          }}
-        >
-          <GearIcon />
-        </button>
+  const content = (
+    <AlbumContextContent key="content" data-context-part="content">
+      <nav aria-label="Album breadcrumb">
+        <BreadcrumbList>{breadcrumbSections}</BreadcrumbList>
+      </nav>
+      <h1 className="text-base lg:text-2xl truncate min-w-0">{title}</h1>
+    </AlbumContextContent>
+  )
+
+  const options = isAuthenticated ? (
+    <button
+      key="options"
+      title="Album options"
+      aria-label="Album options"
+      data-context-part="options"
+      className={tailwindClassNames(
+        buttonStyles({}),
+        'h-12 w-12 lg:h-auto lg:w-auto px-0 py-0 lg:px-2 lg:py-2 flex flex-shrink-0 items-center justify-center'
       )}
-      {mobileBackNavigation}
-    </div>
+      onClick={() => {
+        updateSidebar(<AlbumSidebar albumId={album.id} />)
+      }}
+    >
+      <GearIcon />
+    </button>
+  ) : null
+
+  const contextParts =
+    handedness === 'left'
+      ? [options, backNavigation, content]
+      : [content, backNavigation, options]
+
+  return (
+    <AlbumContextBar
+      className="min-h-[3.5rem]"
+      data-testid="album-context-bar"
+      data-handedness={handedness}
+    >
+      {contextParts}
+    </AlbumContextBar>
   )
 }
 

@@ -98,22 +98,24 @@ function AlbumPage() {
         data ? data.album.title : t('title.loading_album', 'Loading album')
       }
     >
-      <AlbumGallery
-        ref={containerElem}
-        album={data && data.album}
-        loading={loading}
-        setOnlyFavorites={toggleFavorites}
-        onlyFavorites={onlyFavorites}
-        onFavorite={() => (refetchNeededAll = refetchNeededFavorites = true)}
-        showFilter
-        setOrdering={orderParams.setOrdering}
-        ordering={orderParams}
-        onAlbumScanComplete={() => refetch()}
-      />
-      <PaginateLoader
-        active={!finishedLoadingMore && !loading}
-        text={t('general.loading.paginate.media', 'Loading more media')}
-      />
+      <div className="mobile-album-context-bar-clearance">
+        <AlbumGallery
+          ref={containerElem}
+          album={data && data.album}
+          loading={loading}
+          setOnlyFavorites={toggleFavorites}
+          onlyFavorites={onlyFavorites}
+          onFavorite={() => (refetchNeededAll = refetchNeededFavorites = true)}
+          showFilter
+          setOrdering={orderParams.setOrdering}
+          ordering={orderParams}
+          onAlbumScanComplete={() => refetch()}
+        />
+        <PaginateLoader
+          active={!finishedLoadingMore && !loading}
+          text={t('general.loading.paginate.media', 'Loading more media')}
+        />
+      </div>
     </Layout>
   )
 }
