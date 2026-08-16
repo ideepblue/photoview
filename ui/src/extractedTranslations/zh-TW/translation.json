@@ -47,6 +47,38 @@
     "photos": "相片",
     "subalbums": "子相簿"
   },
+  "album_navigation": {
+    "back_to_albums": "返回相簿首頁",
+    "back_to_parent": "返回上一層相簿",
+    "breadcrumb": "相簿路徑",
+    "handedness": {
+      "description": "選擇在手機上將返回和相簿選項放在哪一側，方便拇指觸及。",
+      "left": "左手",
+      "preferred_hand": "慣用手",
+      "right": "右手",
+      "title": "單手操作版面"
+    },
+    "options": "相簿選項"
+  },
+  "album_scan": {
+    "action": "掃描與補齊快取",
+    "complete": "掃描完成，相簿已重新整理。",
+    "confirm_description": "這會重建所選相簿及所有子相簿中現有的縮圖，可能需要較長時間。",
+    "confirm_title": "遞迴重建縮圖？",
+    "continue": "繼續",
+    "current_only": "僅目前相簿",
+    "force_hint": "預設關閉；一般掃描會保留正常的現有縮圖。",
+    "force_refresh": "強制重建現有縮圖",
+    "queued": "掃描工作已加入佇列",
+    "recursive": "目前相簿及所有子相簿",
+    "refresh_failed": "掃描已完成，但相簿重新整理失敗：{{message}}",
+    "scanning": "正在掃描並補齊快取…",
+    "scope": "掃描範圍",
+    "start": "開始掃描",
+    "start_failed": "無法開始掃描：{{message}}",
+    "starting": "正在啟動…",
+    "unknown_error": "掃描器拒絕了這次要求"
+  },
   "general": {
     "action": {
       "add": "新增",
@@ -158,6 +190,19 @@
   "photos_page": {
     "open_details": "開啟相片詳細資訊",
     "title": "時間軸"
+  },
+  "present_view": {
+    "display_options": {
+      "filename": "顯示檔案名稱",
+      "open": "全螢幕顯示設定",
+      "position": "顯示位置",
+      "title": "全螢幕顯示"
+    },
+    "navigation": {
+      "exit": "退出全螢幕瀏覽",
+      "next": "下一張相片",
+      "previous": "上一張相片"
+    }
   },
   "places_page": {
     "title": "地點"

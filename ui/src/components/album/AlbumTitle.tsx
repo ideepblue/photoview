@@ -234,7 +234,7 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
 
   const content = (
     <AlbumContextContent key="content" data-context-part="content">
-      <nav aria-label="Album breadcrumb">
+      <nav aria-label={t('album_navigation.breadcrumb', 'Album breadcrumb')}>
         <BreadcrumbList>{breadcrumbSections}</BreadcrumbList>
       </nav>
       <h1 className="text-base lg:text-2xl truncate min-w-0">{title}</h1>
@@ -244,8 +244,8 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
   const options = isAuthenticated ? (
     <button
       key="options"
-      title="Album options"
-      aria-label="Album options"
+      title={t('album_navigation.options', 'Album options')}
+      aria-label={t('album_navigation.options', 'Album options')}
       data-context-part="options"
       className={tailwindClassNames(
         buttonStyles({}),

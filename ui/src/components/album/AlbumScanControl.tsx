@@ -123,9 +123,7 @@ const AlbumScanControl = ({
       if (!completionSeen.current) {
         setStatus({
           kind: 'pending',
-          message:
-            scannerResult.message ||
-            t('album_scan.queued', 'Scan queued successfully'),
+          message: t('album_scan.queued', 'Scan queued successfully'),
         })
       }
     } catch (error) {

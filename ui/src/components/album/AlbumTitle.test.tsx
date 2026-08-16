@@ -2,6 +2,9 @@ import { MockedProvider } from '@apollo/client/testing'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
 import { MemoryRouter } from 'react-router-dom'
+import i18next from 'i18next'
+import { I18nextProvider } from 'react-i18next'
+import simplifiedChinese from '../../extractedTranslations/zh-CN/translation.json'
 import * as authentication from '../../helpers/authentication'
 import AlbumTitle, { ALBUM_PATH_QUERY } from './AlbumTitle'
 import { MOBILE_ALBUM_CONTEXT_BAR_HANDEDNESS_KEY } from './mobileAlbumContextBarPreferences'
@@ -224,4 +227,49 @@ test('places personal curation with the mirrored mobile actions', async () => {
       child.getAttribute('data-context-part')
     )
   ).toEqual(['options', 'featured', 'back', 'content'])
+})
+
+test('renders the customized album context bar in Simplified Chinese', async () => {
+  authToken.mockReturnValue('token-here')
+  const instance = i18next.createInstance()
+  await instance.init({
+    lng: 'zh-CN',
+    fallbackLng: false,
+    returnEmptyString: false,
+    resources: { 'zh-CN': { translation: simplifiedChinese } },
+  })
+
+  render(
+    <I18nextProvider i18n={instance}>
+      <MemoryRouter>
+        <MockedProvider
+          addTypename={false}
+          mocks={[
+            {
+              request: {
+                query: ALBUM_PATH_QUERY,
+                variables: { id: '3' },
+              },
+              result: {
+                data: {
+                  album: {
+                    id: '3',
+                    path: [{ id: '2', title: '上一级' }],
+                  },
+                },
+              },
+            },
+          ]}
+        >
+          <AlbumTitle album={{ id: '3', title: '当前相册' }} disableLink />
+        </MockedProvider>
+      </MemoryRouter>
+    </I18nextProvider>
+  )
+
+  expect(
+    await screen.findByRole('link', { name: '返回上一级相册' })
+  ).toBeVisible()
+  expect(screen.getByRole('navigation', { name: '相册路径' })).toBeVisible()
+  expect(screen.getByRole('button', { name: '相册选项' })).toBeVisible()
 })

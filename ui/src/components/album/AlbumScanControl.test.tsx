@@ -2,6 +2,9 @@ import { MockedProvider, MockedResponse } from '@apollo/client/testing'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import React from 'react'
+import i18next from 'i18next'
+import { I18nextProvider } from 'react-i18next'
+import simplifiedChinese from '../../extractedTranslations/zh-CN/translation.json'
 
 import { useIsAdmin } from '../routes/AuthorizedRoute'
 import AlbumScanControl, { SCAN_ALBUM_MUTATION } from './AlbumScanControl'
@@ -87,9 +90,7 @@ test('defaults to current album without forcing healthy thumbnails', async () =>
   ).not.toBeChecked()
 
   await user.click(screen.getByRole('button', { name: 'Start scan' }))
-  expect(
-    await screen.findByText('Queued 1 album(s) for scanning')
-  ).toBeVisible()
+  expect(await screen.findByText('Scan queued successfully')).toBeVisible()
 })
 
 test('confirms recursive forced refresh before starting it', async () => {
@@ -114,9 +115,7 @@ test('confirms recursive forced refresh before starting it', async () => {
   ).toBeVisible()
   await user.click(screen.getByRole('button', { name: 'Continue' }))
 
-  expect(
-    await screen.findByText('Queued 1 album(s) for scanning')
-  ).toBeVisible()
+  expect(await screen.findByText('Scan queued successfully')).toBeVisible()
 })
 
 test('reports mutation errors beside the mobile control', async () => {
@@ -144,7 +143,7 @@ test('refetches the initiating album when the scanner completes', async () => {
 
   await user.click(screen.getByRole('button', { name: 'Scan and cache' }))
   await user.click(screen.getByRole('button', { name: 'Start scan' }))
-  await screen.findByText('Queued 1 album(s) for scanning')
+  await screen.findByText('Scan queued successfully')
 
   window.dispatchEvent(new Event(SCANNER_COMPLETE_EVENT))
 
@@ -152,4 +151,31 @@ test('refetches the initiating album when the scanner completes', async () => {
   expect(
     await screen.findByText('Scan complete. Album refreshed.')
   ).toBeVisible()
+})
+
+test('does not expose the scanner English success message in Chinese', async () => {
+  const instance = i18next.createInstance()
+  await instance.init({
+    lng: 'zh-CN',
+    fallbackLng: false,
+    returnEmptyString: false,
+    resources: { 'zh-CN': { translation: simplifiedChinese } },
+  })
+  const user = userEvent.setup()
+
+  render(
+    <I18nextProvider i18n={instance}>
+      <MockedProvider mocks={[scanMock(false, false)]} addTypename={false}>
+        <AlbumScanControl albumId="42" onScanComplete={vi.fn()} />
+      </MockedProvider>
+    </I18nextProvider>
+  )
+
+  await user.click(screen.getByRole('button', { name: '扫描与补缓存' }))
+  await user.click(screen.getByRole('button', { name: '开始扫描' }))
+
+  expect(await screen.findByText('扫描任务已加入队列')).toBeVisible()
+  expect(
+    screen.queryByText('Queued 1 album(s) for scanning')
+  ).not.toBeInTheDocument()
 })
