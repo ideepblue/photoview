@@ -1,5 +1,17 @@
 {
   "album_filter": {
+    "albums": {
+      "all": "All albums",
+      "all_short": "All",
+      "only_featured": "Featured albums only",
+      "sort": "Album sort",
+      "sort_direction": "Album sort direction",
+      "unviewed": "Unviewed albums",
+      "unviewed_short": "Unviewed",
+      "view_status": "Album view status",
+      "viewed": "Viewed albums",
+      "viewed_short": "Viewed"
+    },
     "only_favorites": "Show only favorites",
     "order_direction": {
       "ascending": "Ascending",
@@ -11,9 +23,19 @@
     "sorting_options": {
       "date_imported": "Date imported",
       "date_shot": "Date shot",
+      "last_viewed_at": "Recently viewed",
       "title": "Title",
-      "type": "Kind"
+      "type": "Kind",
+      "view_count": "View count"
     }
+  },
+  "album_featured": {
+    "add": "Add album to featured",
+    "error": "Could not update featured album",
+    "remove": "Remove album from featured"
+  },
+  "album_engagement": {
+    "view_count": "Viewed {{count}} times"
   },
   "album_layout": {
     "album_badge": "Album",
