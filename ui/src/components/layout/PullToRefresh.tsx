@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react'
 import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
+import { activateWaitingServiceWorker } from '../../pwaUpdateRecovery'
 
 const PULL_THRESHOLD = 64
 const MAX_INDICATOR_OFFSET = 48
@@ -60,7 +61,9 @@ const refreshApplication = async () => {
   try {
     const registration = await navigator.serviceWorker?.getRegistration()
     await registration?.update()
-    registration?.waiting?.postMessage({ type: 'SKIP_WAITING' })
+    if (registration?.waiting && navigator.serviceWorker) {
+      await activateWaitingServiceWorker(registration, navigator.serviceWorker)
+    }
   } catch {
     // A page reload remains useful when a service-worker update check fails.
   }
