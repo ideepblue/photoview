@@ -150,7 +150,7 @@ type ComplexityRoot struct {
 
 	Mutation struct {
 		AuthorizeUser               func(childComplexity int, username string, password string) int
-		ChangeUserPreferences       func(childComplexity int, language *string) int
+		ChangeUserPreferences       func(childComplexity int, language *string, homePage *string) int
 		CombineFaceGroups           func(childComplexity int, destinationFaceGroupID int, sourceFaceGroupIDs []int) int
 		CreateUser                  func(childComplexity int, username string, password *string, admin bool, rootPath *string) int
 		DeleteShareToken            func(childComplexity int, token string) int
@@ -262,6 +262,7 @@ type ComplexityRoot struct {
 	}
 
 	UserPreferences struct {
+		HomePage func(childComplexity int) int
 		ID       func(childComplexity int) int
 		Language func(childComplexity int) int
 	}
@@ -347,7 +348,7 @@ type MutationResolver interface {
 	DeleteUser(ctx context.Context, id int) (*models.User, error)
 	UserAddRootPath(ctx context.Context, id int, rootPath string) (*models.Album, error)
 	UserRemoveRootAlbum(ctx context.Context, userID int, albumID int) (*models.Album, error)
-	ChangeUserPreferences(ctx context.Context, language *string) (*models.UserPreferences, error)
+	ChangeUserPreferences(ctx context.Context, language *string, homePage *string) (*models.UserPreferences, error)
 }
 type QueryResolver interface {
 	MyAlbums(ctx context.Context, order *models.Ordering, paginate *models.Pagination, onlyRoot *bool, showEmpty *bool, onlyWithFavorites *bool, viewFilter *models.AlbumViewFilter, onlyFeatured *bool) ([]*models.Album, error)
@@ -851,7 +852,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.ChangeUserPreferences(childComplexity, args["language"].(*string)), true
+		return e.ComplexityRoot.Mutation.ChangeUserPreferences(childComplexity, args["language"].(*string), args["homePage"].(*string)), true
 	case "Mutation.combineFaceGroups":
 		if e.ComplexityRoot.Mutation.CombineFaceGroups == nil {
 			break
@@ -1534,6 +1535,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.User.Username(childComplexity), true
 
+	case "UserPreferences.homePage":
+		if e.ComplexityRoot.UserPreferences.HomePage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.UserPreferences.HomePage(childComplexity), true
 	case "UserPreferences.id":
 		if e.ComplexityRoot.UserPreferences.ID == nil {
 			break
@@ -2047,6 +2054,8 @@ func (ec *executionContext) childFields_UserPreferences(ctx context.Context, fie
 		return ec.fieldContext_UserPreferences_id(ctx, field)
 	case "language":
 		return ec.fieldContext_UserPreferences_language(ctx, field)
+	case "homePage":
+		return ec.fieldContext_UserPreferences_homePage(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type UserPreferences", field.Name)
 }
@@ -2308,6 +2317,14 @@ func (ec *executionContext) field_Mutation_changeUserPreferences_args(ctx contex
 		return nil, err
 	}
 	args["language"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "homePage",
+		func(ctx context.Context, v any) (*string, error) {
+			return ec.unmarshalOString2ᚖstring(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["homePage"] = arg1
 	return args, nil
 }
 
@@ -6601,7 +6618,7 @@ func (ec *executionContext) _Mutation_changeUserPreferences(ctx context.Context,
 		},
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().ChangeUserPreferences(ctx, fc.Args["language"].(*string))
+			return ec.Resolvers.Mutation().ChangeUserPreferences(ctx, fc.Args["language"].(*string), fc.Args["homePage"].(*string))
 		},
 		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
 			directive0 := next
@@ -8548,6 +8565,29 @@ func (ec *executionContext) _UserPreferences_language(ctx context.Context, field
 }
 func (ec *executionContext) fieldContext_UserPreferences_language(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("UserPreferences", field, false, false, errors.New("field of type LanguageTranslation does not have child fields"))
+}
+
+func (ec *executionContext) _UserPreferences_homePage(ctx context.Context, field graphql.CollectedField, obj *models.UserPreferences) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_UserPreferences_homePage(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.HomePage, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_UserPreferences_homePage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("UserPreferences", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _VideoMetadata_id(ctx context.Context, field graphql.CollectedField, obj *models.VideoMetadata) (ret graphql.Marshaler) {
@@ -12647,6 +12687,11 @@ func (ec *executionContext) _UserPreferences(ctx context.Context, sel ast.Select
 		case "language":
 			out.Values[i] = ec._UserPreferences_language(ctx, field, obj)
 			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "homePage":
+			out.Values[i] = ec._UserPreferences_homePage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		default:

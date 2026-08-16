@@ -55,6 +55,8 @@ const customUiKeys = [
   'album_scan.starting',
   'album_scan.unknown_error',
   'photos_page.open_details',
+  'present_view.quality.high_res',
+  'present_view.quality.thumbnail',
   'present_view.display_options.filename',
   'present_view.display_options.open',
   'present_view.display_options.position',
@@ -62,6 +64,9 @@ const customUiKeys = [
   'present_view.navigation.exit',
   'present_view.navigation.next',
   'present_view.navigation.previous',
+  'pwa.pull_to_refresh.pull',
+  'pwa.pull_to_refresh.refreshing',
+  'pwa.pull_to_refresh.release',
   'sidebar.album.album_cover',
   'sidebar.album.cover_set_for',
   'sidebar.album.reset_cover',
@@ -70,6 +75,10 @@ const customUiKeys = [
   'sidebar.album.set_cover_for_current',
   'sidebar.album.set_cover_for_parent',
   'sidebar.album.set_cover_help',
+  'settings.user_preferences.home_page.albums',
+  'settings.user_preferences.home_page.description',
+  'settings.user_preferences.home_page.timeline',
+  'settings.user_preferences.home_page.title',
 ] as const
 
 const resources = {

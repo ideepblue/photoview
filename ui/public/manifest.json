@@ -2,22 +2,30 @@
   "name": "Photoview",
   "short_name": "Photoview",
   "description": "Photo gallery for self-hosted personal servers",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "theme_color": "black",
   "background_color": "white",
   "icons": [
     {
       "src": "/logo192.png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/logo512.png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/photoview-logo.svg",
-      "sizes": "150x150"
+      "sizes": "150x150",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ]
 }

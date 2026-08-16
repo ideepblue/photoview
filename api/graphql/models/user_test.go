@@ -10,6 +10,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestUserPreferencesHomePage(t *testing.T) {
+	db := test_utils.DatabaseTest(t)
+	user, err := models.RegisterUser(db, "preferences-user", nil, false)
+	assert.NoError(t, err)
+
+	preferences := models.UserPreferences{UserID: user.ID}
+	assert.NoError(t, db.Create(&preferences).Error)
+	assert.Equal(t, "albums", preferences.HomePage)
+
+	preferences.HomePage = "timeline"
+	assert.NoError(t, db.Save(&preferences).Error)
+
+	preferences.HomePage = "invalid"
+	assert.Error(t, db.Save(&preferences).Error)
+}
+
 func TestUserRegistrationAuthorization(t *testing.T) {
 	db := test_utils.DatabaseTest(t)
 

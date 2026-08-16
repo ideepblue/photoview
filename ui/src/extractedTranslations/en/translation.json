@@ -192,6 +192,10 @@
     "title": "Timeline"
   },
   "present_view": {
+    "quality": {
+      "high_res": "High-resolution resource is displayed",
+      "thumbnail": "Thumbnail preview is displayed"
+    },
     "display_options": {
       "filename": "Show filename",
       "open": "Fullscreen display options",
@@ -202,6 +206,13 @@
       "exit": "Exit presentation mode",
       "next": "Next image",
       "previous": "Previous image"
+    }
+  },
+  "pwa": {
+    "pull_to_refresh": {
+      "pull": "Pull down to refresh",
+      "refreshing": "Refreshing",
+      "release": "Release to refresh"
     }
   },
   "places_page": {
@@ -243,6 +254,12 @@
       },
       "language_selector": {
         "placeholder": "Select language"
+      },
+      "home_page": {
+        "albums": "Albums",
+        "description": "Choose where Photoview opens after signing in",
+        "timeline": "Timeline",
+        "title": "Home page"
       },
       "theme": {
         "auto": {
