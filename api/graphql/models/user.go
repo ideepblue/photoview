@@ -59,9 +59,22 @@ type UserPreferences struct {
 	UserID   int  `gorm:"not null;index"`
 	User     User `gorm:"constraint:OnDelete:CASCADE;"`
 	Language *LanguageTranslation
+	HomePage string `gorm:"not null;default:albums"`
 }
 
+const (
+	UserHomePageAlbums   = "albums"
+	UserHomePageTimeline = "timeline"
+)
+
 func (u *UserPreferences) BeforeSave(tx *gorm.DB) error {
+	if u.HomePage == "" {
+		u.HomePage = UserHomePageAlbums
+	}
+
+	if u.HomePage != UserHomePageAlbums && u.HomePage != UserHomePageTimeline {
+		return errors.New("invalid home page value")
+	}
 
 	if u.Language != nil && *u.Language == "" {
 		u.Language = nil

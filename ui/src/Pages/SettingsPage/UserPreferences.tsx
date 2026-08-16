@@ -29,8 +29,16 @@ const languagePreferences = [
   { key: 7, label: 'Italiano', value: LanguageTranslation.Italian },
   { key: 8, label: 'Deutsch', value: LanguageTranslation.German },
   { key: 9, label: 'Русский', value: LanguageTranslation.Russian },
-  { key: 10, label: '繁體中文 (香港)', value: LanguageTranslation.TraditionalChineseHK },
-  { key: 16, label: '繁體中文 (台灣)', value: LanguageTranslation.TraditionalChineseTW },
+  {
+    key: 10,
+    label: '繁體中文 (香港)',
+    value: LanguageTranslation.TraditionalChineseHK,
+  },
+  {
+    key: 16,
+    label: '繁體中文 (台灣)',
+    value: LanguageTranslation.TraditionalChineseTW,
+  },
   { key: 11, label: '简体中文', value: LanguageTranslation.SimplifiedChinese },
   { key: 12, label: 'Português', value: LanguageTranslation.Portuguese },
   { key: 13, label: 'Euskara', value: LanguageTranslation.Basque },
@@ -58,20 +66,33 @@ const themePreferences = (t: TranslationFn) => [
   },
 ]
 
-const CHANGE_USER_PREFERENCES = gql`
-  mutation changeUserPreferences($language: String) {
-    changeUserPreferences(language: $language) {
+const homePagePreferences = (t: TranslationFn) => [
+  {
+    label: t('settings.user_preferences.home_page.albums', 'Albums'),
+    value: 'albums',
+  },
+  {
+    label: t('settings.user_preferences.home_page.timeline', 'Timeline'),
+    value: 'timeline',
+  },
+]
+
+export const CHANGE_USER_PREFERENCES = gql`
+  mutation changeUserPreferences($language: String, $homePage: String) {
+    changeUserPreferences(language: $language, homePage: $homePage) {
       id
       language
+      homePage
     }
   }
 `
 
-const MY_USER_PREFERENCES = gql`
+export const MY_USER_PREFERENCES = gql`
   query myUserPreferences {
     myUserPreferences {
       id
       language
+      homePage
     }
   }
 `
@@ -112,7 +133,8 @@ const UserPreferences = () => {
   >(CHANGE_USER_PREFERENCES)
 
   const sortedLanguagePrefs = useMemo(
-    () => [...languagePreferences].sort((a, b) => a.label.localeCompare(b.label)),
+    () =>
+      [...languagePreferences].sort((a, b) => a.label.localeCompare(b.label)),
     []
   )
 
@@ -155,6 +177,26 @@ const UserPreferences = () => {
           })
         }}
         selected={data?.myUserPreferences.language || undefined}
+        disabled={loadingPrefs}
+      />
+      <label htmlFor="user_pref_home_page_field">
+        <InputLabelTitle>
+          {t('settings.user_preferences.home_page.title', 'Home page')}
+        </InputLabelTitle>
+        <InputLabelDescription>
+          {t(
+            'settings.user_preferences.home_page.description',
+            'Choose where Photoview opens after signing in'
+          )}
+        </InputLabelDescription>
+      </label>
+      <Dropdown
+        id="user_pref_home_page_field"
+        items={homePagePreferences(t)}
+        setSelected={homePage => {
+          changePrefs({ variables: { homePage } })
+        }}
+        selected={data?.myUserPreferences.homePage || 'albums'}
         disabled={loadingPrefs}
       />
       <label htmlFor="user_pref_change_theme_field">

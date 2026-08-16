@@ -97,7 +97,7 @@ const PresentView = ({
       : null
 
   const viewer = (onViewingActive?: (active: boolean) => void) => (
-    <StyledContainer className={className}>
+    <StyledContainer className={className} data-disable-pull-to-refresh>
       <PreventScroll />
       <PresentNavigationOverlay
         dispatchMedia={dispatchMedia}

@@ -192,6 +192,10 @@
     "title": "相片"
   },
   "present_view": {
+    "quality": {
+      "high_res": "正在顯示高畫質資源",
+      "thumbnail": "正在顯示縮圖"
+    },
     "display_options": {
       "filename": "顯示檔案名稱",
       "open": "全螢幕顯示設定",
@@ -202,6 +206,13 @@
       "exit": "退出全螢幕瀏覽",
       "next": "下一張相片",
       "previous": "上一張相片"
+    }
+  },
+  "pwa": {
+    "pull_to_refresh": {
+      "pull": "下拉重新載入",
+      "refreshing": "正在重新載入",
+      "release": "放開以重新載入"
     }
   },
   "places_page": {
@@ -243,6 +254,12 @@
       },
       "language_selector": {
         "placeholder": "Select language"
+      },
+      "home_page": {
+        "albums": "相簿",
+        "description": "選擇登入後 PhotoView 預設開啟的頁面",
+        "timeline": "時間軸",
+        "title": "首頁"
       },
       "theme": {
         "auto": {

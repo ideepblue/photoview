@@ -12,6 +12,8 @@ import { authToken, clearTokenCookie } from '../../helpers/authentication'
 import { TFunction, useTranslation } from 'react-i18next'
 import Loader from '../../primitives/Loader'
 import AuthorizedRoute from './AuthorizedRoute'
+import { gql, useQuery } from '@apollo/client'
+import { homePagePreference } from './__generated__/homePagePreference'
 
 const AlbumsPage = React.lazy(
   () => import('../../Pages/AllAlbumsPage/AlbumsPage')
@@ -139,9 +141,37 @@ const Routes = () => {
 const IndexPage = () => {
   const token = authToken()
 
-  const dest = token ? '/timeline' : '/login'
+  if (!token) return <Navigate to="/login" />
 
-  return <Navigate to={dest} />
+  return <HomePageRedirect />
+}
+
+export const HOME_PAGE_PREFERENCE = gql`
+  query homePagePreference {
+    myUserPreferences {
+      id
+      homePage
+    }
+  }
+`
+
+const HomePageRedirect = () => {
+  const { t } = useTranslation()
+  const { data, loading } = useQuery<homePagePreference>(HOME_PAGE_PREFERENCE)
+
+  if (loading) {
+    return <Loader message={t('general.loading.page', 'Loading page')} active />
+  }
+
+  return (
+    <Navigate
+      to={
+        data?.myUserPreferences.homePage === 'timeline'
+          ? '/timeline'
+          : '/albums'
+      }
+    />
+  )
 }
 
 export const NotFoundPage = ({ t }: { t: TFunction }) => {

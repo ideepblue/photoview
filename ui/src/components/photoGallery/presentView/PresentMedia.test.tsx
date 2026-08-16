@@ -12,7 +12,12 @@ test('render present image', () => {
     id: '123',
     title: 'sample_image.jpg',
     type: MediaType.Photo,
-    highRes: null,
+    highRes: {
+      __typename: 'MediaURL',
+      url: '/sample_image_highres.jpg',
+      width: 2400,
+      height: 1600,
+    },
     blurhash: null,
     videoWeb: null,
     favorite: false,
@@ -38,8 +43,16 @@ test('render present image', () => {
   expect(highRes).toHaveStyle({
     display: 'none',
   })
+  expect(
+    screen.getByRole('status', { name: 'Thumbnail preview is displayed' })
+  ).toHaveAttribute('data-quality', 'thumbnail')
 
   fireEvent.load(highRes)
+  expect(
+    screen.getByRole('status', {
+      name: 'High-resolution resource is displayed',
+    })
+  ).toHaveAttribute('data-quality', 'high-res')
   expect(onViewingActive).toHaveBeenCalledWith(true)
 })
 
