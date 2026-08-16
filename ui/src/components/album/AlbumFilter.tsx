@@ -160,15 +160,22 @@ const AlbumEngagementControls = ({
   const statusOptions: Array<{
     value: AlbumViewStatus
     label: string
+    shortLabel: string
   }> = [
-    { value: 'all', label: t('album_filter.albums.all', 'All albums') },
+    {
+      value: 'all',
+      label: t('album_filter.albums.all', 'All albums'),
+      shortLabel: t('album_filter.albums.all_short', 'All'),
+    },
     {
       value: 'viewed',
       label: t('album_filter.albums.viewed', 'Viewed albums'),
+      shortLabel: t('album_filter.albums.viewed_short', 'Viewed'),
     },
     {
       value: 'unviewed',
       label: t('album_filter.albums.unviewed', 'Unviewed albums'),
+      shortLabel: t('album_filter.albums.unviewed_short', 'Unviewed'),
     },
   ]
   const sortOptions: SortingOption[] = [
@@ -214,17 +221,14 @@ const AlbumEngagementControls = ({
               )}
               onClick={() => setViewStatus(option.value)}
             >
-              {option.label.replace(/ albums$/, '')}
+              {option.shortLabel}
             </button>
           ))}
         </div>
       </fieldset>
       <Checkbox
         className="mb-1"
-        label={t(
-          'album_filter.albums.only_featured',
-          'Featured albums only'
-        )}
+        label={t('album_filter.albums.only_featured', 'Featured albums only')}
         checked={onlyFeatured}
         onChange={event => setOnlyFeatured(event.target.checked)}
       />

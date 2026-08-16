@@ -1,5 +1,17 @@
 {
   "album_filter": {
+    "albums": {
+      "all": "全部相册",
+      "all_short": "全部",
+      "only_featured": "只显示精选相册",
+      "sort": "相册排序",
+      "sort_direction": "相册排序方向",
+      "unviewed": "未看相册",
+      "unviewed_short": "未看",
+      "view_status": "相册浏览状态",
+      "viewed": "已看相册",
+      "viewed_short": "已看"
+    },
     "only_favorites": "只显示喜爱",
     "order_direction": {
       "ascending": "升序",
@@ -11,9 +23,19 @@
     "sorting_options": {
       "date_imported": "加入日期",
       "date_shot": "拍摄日期",
+      "last_viewed_at": "最近浏览",
       "title": "标题",
-      "type": "文件类型"
+      "type": "文件类型",
+      "view_count": "浏览次数"
     }
+  },
+  "album_featured": {
+    "add": "添加到精选相册",
+    "error": "无法更新精选相册",
+    "remove": "从精选相册移除"
+  },
+  "album_engagement": {
+    "view_count": "浏览 {{count}} 次"
   },
   "album_layout": {
     "album_badge": "相册",
