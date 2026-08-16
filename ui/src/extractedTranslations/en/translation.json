@@ -49,7 +49,16 @@
   },
   "album_navigation": {
     "back_to_albums": "Back to albums",
-    "back_to_parent": "Back to parent album"
+    "back_to_parent": "Back to parent album",
+    "breadcrumb": "Album breadcrumb",
+    "handedness": {
+      "description": "Choose which side keeps Back and Album options within thumb reach on phones.",
+      "left": "Left hand",
+      "preferred_hand": "Preferred hand",
+      "right": "Right hand",
+      "title": "One-handed album bar"
+    },
+    "options": "Album options"
   },
   "album_scan": {
     "action": "Scan and cache",
@@ -181,6 +190,19 @@
   "photos_page": {
     "open_details": "Open photo details",
     "title": "Timeline"
+  },
+  "present_view": {
+    "display_options": {
+      "filename": "Show filename",
+      "open": "Fullscreen display options",
+      "position": "Show position",
+      "title": "Fullscreen display"
+    },
+    "navigation": {
+      "exit": "Exit presentation mode",
+      "next": "Next image",
+      "previous": "Previous image"
+    }
   },
   "places_page": {
     "title": "Places"

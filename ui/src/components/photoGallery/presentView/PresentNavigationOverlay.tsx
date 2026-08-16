@@ -249,7 +249,7 @@ const PresentNavigationOverlay = ({
           </ViewerMetadata>
         )}
       <NavigationButton
-        aria-label="Previous image"
+        aria-label={t('present_view.navigation.previous', 'Previous image')}
         className={hide ? 'hide' : undefined}
         align="left"
         onClick={event => {
@@ -260,7 +260,7 @@ const PresentNavigationOverlay = ({
         <PrevIcon />
       </NavigationButton>
       <NavigationButton
-        aria-label="Next image"
+        aria-label={t('present_view.navigation.next', 'Next image')}
         className={hide ? 'hide' : undefined}
         align="right"
         onClick={event => {
@@ -271,7 +271,7 @@ const PresentNavigationOverlay = ({
         <NextIcon />
       </NavigationButton>
       <ExitButton
-        aria-label="Exit presentation mode"
+        aria-label={t('present_view.navigation.exit', 'Exit presentation mode')}
         className={hide ? 'hide' : undefined}
         onClick={event => {
           event.stopPropagation()
