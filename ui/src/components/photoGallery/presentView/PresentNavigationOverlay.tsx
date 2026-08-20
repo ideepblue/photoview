@@ -20,62 +20,59 @@ const StyledOverlayContainer = styled.div`
 `
 
 const OverlayButton = styled.button`
-  width: 64px;
-  height: 64px;
-  background: none;
-  border: none;
+  display: grid;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(20, 20, 24, 0.64);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 50%;
   outline: none;
   cursor: pointer;
-  position: absolute;
-  z-index: 2;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  transition: opacity 180ms ease, transform 180ms ease, background 140ms ease;
 
   & svg {
-    width: 32px;
-    height: 32px;
+    width: 22px;
+    height: 22px;
     overflow: visible !important;
   }
 
   & svg path {
-    stroke: rgba(255, 255, 255, 0.5);
-    transition-property: stroke, filter;
-    transition-duration: 140ms;
+    stroke: currentColor;
   }
 
-  &:hover svg path {
-    stroke: rgba(255, 255, 255, 1);
-    filter: drop-shadow(0px 0px 2px rgba(0, 0, 0, 0.6));
+  &:hover {
+    background: rgba(48, 48, 54, 0.82);
+    transform: scale(1.04);
   }
 
-  &.hide svg path {
-    stroke: rgba(255, 255, 255, 0);
-    transition: stroke 300ms;
+  &:active {
+    transform: scale(0.94);
   }
 
   &.hide {
+    opacity: 0;
     pointer-events: none;
+    transform: scale(0.88);
   }
 `
 
-const ExitButton = styled(OverlayButton)`
-  left: 28px;
-  top: 28px;
-
-  @media (max-width: 1000px) {
-    top: auto;
-    bottom: max(28px, env(safe-area-inset-bottom));
-    left: 20px;
-  }
+const ActionRail = styled.div`
+  position: absolute;
+  z-index: 2;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  display: flex;
+  gap: 10px;
 `
 
-const InfoButton = styled(OverlayButton)`
-  right: 28px;
-  top: 28px;
-`
-
-const SettingsButton = styled(OverlayButton)`
-  right: 28px;
-  bottom: max(28px, env(safe-area-inset-bottom));
-`
+const ExitButton = styled(OverlayButton)``
+const InfoButton = styled(OverlayButton)``
+const SettingsButton = styled(OverlayButton)``
 
 const ViewerMetadata = styled.div`
   position: absolute;
@@ -109,8 +106,8 @@ const FilenameText = styled.div`
 const SettingsPopover = styled.div`
   position: absolute;
   z-index: 3;
-  right: 28px;
-  bottom: max(96px, calc(env(safe-area-inset-bottom) + 68px));
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(78px, calc(env(safe-area-inset-bottom) + 58px));
   min-width: 184px;
   padding: 12px 14px;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -146,17 +143,18 @@ const SettingsOption = styled.label`
 `
 
 const NavigationButton = styled(OverlayButton)<{ align: 'left' | 'right' }>`
-  height: 80%;
-  width: 20%;
-  top: 10%;
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  transform: translateY(-50%);
 
-  ${({ align: float }) => (float == 'left' ? 'left: 0;' : null)}
-  ${({ align: float }) => (float == 'right' ? 'right: 0;' : null)}
+  ${({ align: float }) =>
+    float == 'left'
+      ? 'left: max(16px, env(safe-area-inset-left));'
+      : 'right: max(16px, env(safe-area-inset-right));'}
 
-  & svg {
-    margin: auto;
-    width: 48px;
-    height: 64px;
+  &.hide {
+    transform: translateY(-50%) scale(0.88);
   }
 `
 
@@ -168,6 +166,7 @@ type PresentNavigationOverlayProps = {
   mediaCount?: number
   filename?: string
   onShowInfo?(): void
+  zoomed?: boolean
 }
 
 const PresentNavigationOverlay = ({
@@ -178,6 +177,7 @@ const PresentNavigationOverlay = ({
   mediaCount,
   filename,
   onShowInfo,
+  zoomed = false,
 }: PresentNavigationOverlayProps) => {
   const { t } = useTranslation()
   const [hide, setHide] = useState(true)
@@ -250,8 +250,9 @@ const PresentNavigationOverlay = ({
         )}
       <NavigationButton
         aria-label={t('present_view.navigation.previous', 'Previous image')}
-        className={hide ? 'hide' : undefined}
+        className={hide || zoomed ? 'hide' : undefined}
         align="left"
+        disabled={zoomed}
         onClick={event => {
           event.stopPropagation()
           dispatchMedia({ type: 'previousImage' })
@@ -261,8 +262,9 @@ const PresentNavigationOverlay = ({
       </NavigationButton>
       <NavigationButton
         aria-label={t('present_view.navigation.next', 'Next image')}
-        className={hide ? 'hide' : undefined}
+        className={hide || zoomed ? 'hide' : undefined}
         align="right"
+        disabled={zoomed}
         onClick={event => {
           event.stopPropagation()
           dispatchMedia({ type: 'nextImage' })
@@ -270,64 +272,69 @@ const PresentNavigationOverlay = ({
       >
         <NextIcon />
       </NavigationButton>
-      <ExitButton
-        aria-label={t('present_view.navigation.exit', 'Exit presentation mode')}
-        className={hide ? 'hide' : undefined}
-        onClick={event => {
-          event.stopPropagation()
-          if (disableSaveCloseInHistory === true) {
-            dispatchMedia({ type: 'closePresentMode' })
-          } else {
-            closePresentModeAction({ dispatchMedia })
-          }
-        }}
-      >
-        <ExitIcon />
-      </ExitButton>
-      {onShowInfo && (
-        <InfoButton
-          aria-label={t('photos_page.open_details', 'Open photo details')}
+      <ActionRail data-testid="present-action-rail">
+        <ExitButton
+          aria-label={t(
+            'present_view.navigation.exit',
+            'Exit presentation mode'
+          )}
           className={hide ? 'hide' : undefined}
           onClick={event => {
             event.stopPropagation()
-            onShowInfo()
+            if (disableSaveCloseInHistory === true) {
+              dispatchMedia({ type: 'closePresentMode' })
+            } else {
+              closePresentModeAction({ dispatchMedia })
+            }
           }}
         >
-          <InfoIcon />
-        </InfoButton>
-      )}
-      <SettingsButton
-        aria-label={t(
-          'present_view.display_options.open',
-          'Fullscreen display options'
+          <ExitIcon />
+        </ExitButton>
+        {onShowInfo && (
+          <InfoButton
+            aria-label={t('photos_page.open_details', 'Open photo details')}
+            className={hide ? 'hide' : undefined}
+            onClick={event => {
+              event.stopPropagation()
+              onShowInfo()
+            }}
+          >
+            <InfoIcon />
+          </InfoButton>
         )}
-        aria-expanded={settingsOpen}
-        className={hide ? 'hide' : undefined}
-        onClick={event => {
-          event.stopPropagation()
+        <SettingsButton
+          aria-label={t(
+            'present_view.display_options.open',
+            'Fullscreen display options'
+          )}
+          aria-expanded={settingsOpen}
+          className={hide ? 'hide' : undefined}
+          onClick={event => {
+            event.stopPropagation()
 
-          if (settingsOpen) {
-            setSettingsOpen(false)
-            scheduleHide()
-          } else {
-            clearHideTimer()
-            setHide(false)
-            setSettingsOpen(true)
-          }
-        }}
-      >
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 32 32"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
+            if (settingsOpen) {
+              setSettingsOpen(false)
+              scheduleHide()
+            } else {
+              clearHideTimer()
+              setHide(false)
+              setSettingsOpen(true)
+            }
+          }}
         >
-          <path d="M6 9h20M6 16h20M6 23h20" />
-          <path d="M12 6v6M21 13v6M15 20v6" />
-        </svg>
-      </SettingsButton>
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 32 32"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <path d="M6 9h20M6 16h20M6 23h20" />
+            <path d="M12 6v6M21 13v6M15 20v6" />
+          </svg>
+        </SettingsButton>
+      </ActionRail>
       {settingsOpen && (
         <SettingsPopover
           role="group"

@@ -95,6 +95,20 @@ const renderTrack = ({
   }
 }
 
+const tapAt = (track: HTMLElement, pointerId: number, x: number, y: number) => {
+  fireEvent.pointerDown(track, {
+    pointerId,
+    button: 0,
+    clientX: x,
+    clientY: y,
+  })
+  fireEvent.pointerUp(track, {
+    pointerId,
+    clientX: x,
+    clientY: y,
+  })
+}
+
 beforeEach(() => {
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,
@@ -356,6 +370,57 @@ test('does not navigate past a non-circular boundary', () => {
     clientY: 200,
   })
 
+  expect(screen.queryByTestId('present-swipe-target')).not.toBeInTheDocument()
+  expect(onNavigate).not.toHaveBeenCalled()
+})
+
+test('double tap enters and exits the fixed 2.5x zoom mode', () => {
+  const { track } = renderTrack()
+
+  tapAt(track, 1, 200, 400)
+  tapAt(track, 2, 200, 400)
+
+  expect(screen.getByTestId('present-zoomed-media')).toHaveStyle(
+    'transform: translate3d(0px, 0px, 0) scale(2.5)'
+  )
+
+  tapAt(track, 3, 200, 400)
+  tapAt(track, 4, 200, 400)
+
+  expect(screen.queryByTestId('present-zoomed-media')).not.toBeInTheDocument()
+})
+
+test('panning a zoomed photo does not navigate to another image', () => {
+  const { onNavigate, track } = renderTrack()
+
+  tapAt(track, 1, 200, 400)
+  tapAt(track, 2, 200, 400)
+
+  fireEvent.pointerDown(track, {
+    pointerId: 3,
+    button: 0,
+    clientX: 200,
+    clientY: 400,
+  })
+  fireEvent.pointerMove(track, {
+    pointerId: 3,
+    clientX: 80,
+    clientY: 400,
+  })
+  fireEvent.pointerMove(track, {
+    pointerId: 3,
+    clientX: 40,
+    clientY: 400,
+  })
+  fireEvent.pointerUp(track, {
+    pointerId: 3,
+    clientX: 40,
+    clientY: 400,
+  })
+
+  expect(screen.getByTestId('present-zoomed-media')).toHaveStyle(
+    'transform: translate3d(-160px, 0px, 0) scale(2.5)'
+  )
   expect(screen.queryByTestId('present-swipe-target')).not.toBeInTheDocument()
   expect(onNavigate).not.toHaveBeenCalled()
 })

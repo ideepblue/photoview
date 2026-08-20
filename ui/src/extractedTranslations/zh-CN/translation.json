@@ -194,7 +194,8 @@
   "present_view": {
     "quality": {
       "high_res": "正在显示高清资源",
-      "thumbnail": "正在显示缩略图"
+      "thumbnail": "正在显示缩略图",
+      "unavailable": "高清资源不可用"
     },
     "display_options": {
       "filename": "显示文件名",

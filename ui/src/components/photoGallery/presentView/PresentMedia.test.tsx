@@ -56,6 +56,40 @@ test('render present image', () => {
   expect(onViewingActive).toHaveBeenCalledWith(true)
 })
 
+test('marks a high-resolution image as unavailable after a load error', () => {
+  const media: MediaGalleryFields = {
+    __typename: 'Media',
+    id: 'failed-highres',
+    title: 'failed_highres.jpg',
+    type: MediaType.Photo,
+    highRes: {
+      __typename: 'MediaURL',
+      url: '/failed_highres.jpg',
+      width: 2400,
+      height: 1600,
+    },
+    blurhash: null,
+    videoWeb: null,
+    favorite: false,
+    thumbnail: {
+      __typename: 'MediaURL',
+      url: '/failed_thumbnail.jpg',
+      width: 300,
+      height: 200,
+    },
+  }
+
+  render(<PresentMedia media={media} />)
+
+  fireEvent.error(screen.getByTestId('present-img-highres'))
+
+  expect(
+    screen.getByRole('status', {
+      name: 'High-resolution resource is unavailable',
+    })
+  ).toHaveAttribute('data-quality', 'unavailable')
+})
+
 test('render present video', () => {
   const onViewingActive = vi.fn()
   const media: MediaGalleryFields = {

@@ -194,7 +194,8 @@
   "present_view": {
     "quality": {
       "high_res": "正在顯示高畫質資源",
-      "thumbnail": "正在顯示縮圖"
+      "thumbnail": "正在顯示縮圖",
+      "unavailable": "高畫質資源無法使用"
     },
     "display_options": {
       "filename": "顯示檔案名稱",

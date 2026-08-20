@@ -194,7 +194,8 @@
   "present_view": {
     "quality": {
       "high_res": "High-resolution resource is displayed",
-      "thumbnail": "Thumbnail preview is displayed"
+      "thumbnail": "Thumbnail preview is displayed",
+      "unavailable": "High-resolution resource is unavailable"
     },
     "display_options": {
       "filename": "Show filename",

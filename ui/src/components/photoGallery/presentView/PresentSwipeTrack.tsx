@@ -21,6 +21,9 @@ import {
 const COMMIT_DURATION_MS = 220
 const REBOUND_DURATION_MS = 180
 const SETTLE_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)'
+const ZOOM_SCALE = 2.5
+const DOUBLE_TAP_DELAY_MS = 300
+const DOUBLE_TAP_DISTANCE_PX = 32
 
 const SwipeTrack = styled.div`
   position: absolute;
@@ -40,6 +43,14 @@ const MediaLayer = styled.div`
   will-change: transform;
 `
 
+const ZoomedMedia = styled.div`
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+`
+
 type MotionState = {
   axis: SwipeAxis | null
   offset: number
@@ -52,7 +63,21 @@ type PointerSession = {
   id: number
   startX: number
   startY: number
+  currentX: number
+  currentY: number
   startTime: number
+  moved: boolean
+}
+
+type ZoomState = {
+  origin: SwipePoint
+  pan: SwipePoint
+}
+
+type Tap = {
+  x: number
+  y: number
+  time: number
 }
 
 type PresentSwipeTrackProps = {
@@ -63,6 +88,7 @@ type PresentSwipeTrackProps = {
   onTap?(): void
   imageLoaded?(): void
   onViewingActive?(active: boolean): void
+  onZoomChange?(zoomed: boolean): void
 }
 
 const idleMotion = (): MotionState => ({
@@ -87,12 +113,16 @@ const PresentSwipeTrack = ({
   onTap,
   imageLoaded,
   onViewingActive,
+  onZoomChange,
 }: PresentSwipeTrackProps) => {
   const [motion, setMotion] = useState<MotionState>(idleMotion)
   const motionRef = useRef<MotionState>(motion)
   const pointerRef = useRef<PointerSession | null>(null)
   const viewportRef = useRef({ width: 0, height: 0 })
   const settleTimerRef = useRef<number | null>(null)
+  const [zoom, setZoom] = useState<ZoomState | null>(null)
+  const zoomRef = useRef<ZoomState | null>(null)
+  const lastTapRef = useRef<Tap | null>(null)
 
   const updateMotion = useCallback((nextMotion: MotionState) => {
     motionRef.current = nextMotion
@@ -111,6 +141,24 @@ const PresentSwipeTrack = ({
     pointerRef.current = null
     updateMotion(idleMotion())
   }, [clearSettleTimer, updateMotion])
+
+  const resetZoom = useCallback(() => {
+    zoomRef.current = null
+    lastTapRef.current = null
+    setZoom(null)
+    onZoomChange?.(false)
+  }, [onZoomChange])
+
+  const enterZoom = useCallback(
+    (origin: SwipePoint) => {
+      const nextZoom = { origin, pan: { x: 0, y: 0 } }
+      zoomRef.current = nextZoom
+      lastTapRef.current = null
+      setZoom(nextZoom)
+      onZoomChange?.(true)
+    },
+    [onZoomChange]
+  )
 
   const scheduleSettle = useCallback(
     (duration: number, navigation: SwipeNavigation | null) => {
@@ -160,12 +208,16 @@ const PresentSwipeTrack = ({
     return () => window.removeEventListener('blur', handleWindowBlur)
   }, [rebound])
 
-  useEffect(() => resetMotion(), [currentMedia.id, resetMotion])
+  useEffect(() => {
+    resetMotion()
+    resetZoom()
+  }, [currentMedia.id, resetMotion, resetZoom])
 
   useEffect(
     () => () => {
       clearSettleTimer()
       pointerRef.current = null
+      zoomRef.current = null
     },
     [clearSettleTimer]
   )
@@ -184,7 +236,10 @@ const PresentSwipeTrack = ({
       id: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
+      currentX: event.clientX,
+      currentY: event.clientY,
       startTime: event.timeStamp,
+      moved: false,
     }
     viewportRef.current = {
       width: window.innerWidth,
@@ -198,10 +253,43 @@ const PresentSwipeTrack = ({
     const pointer = pointerRef.current
     if (pointer === null || pointer.id !== event.pointerId) return
 
+    const activeZoom = zoomRef.current
+    if (activeZoom !== null) {
+      const delta = {
+        x: event.clientX - pointer.currentX,
+        y: event.clientY - pointer.currentY,
+      }
+      const maxX = Math.max(
+        0,
+        (viewportRef.current.width * (ZOOM_SCALE - 1)) / 2
+      )
+      const maxY = Math.max(
+        0,
+        (viewportRef.current.height * (ZOOM_SCALE - 1)) / 2
+      )
+      const nextZoom = {
+        ...activeZoom,
+        pan: {
+          x: Math.max(-maxX, Math.min(maxX, activeZoom.pan.x + delta.x)),
+          y: Math.max(-maxY, Math.min(maxY, activeZoom.pan.y + delta.y)),
+        },
+      }
+      zoomRef.current = nextZoom
+      setZoom(nextZoom)
+      pointerRef.current = {
+        ...pointer,
+        currentX: event.clientX,
+        currentY: event.clientY,
+        moved: true,
+      }
+      return
+    }
+
     const delta = {
       x: event.clientX - pointer.startX,
       y: event.clientY - pointer.startY,
     }
+
     const axis = motionRef.current.axis ?? lockSwipeAxis(delta)
     if (axis === null) return
 
@@ -227,9 +315,38 @@ const PresentSwipeTrack = ({
     event.currentTarget.releasePointerCapture?.(event.pointerId)
     pointerRef.current = null
 
+    const tapDistance = pointer.moved
+      ? DOUBLE_TAP_DISTANCE_PX
+      : Math.hypot(
+          event.clientX - pointer.startX,
+          event.clientY - pointer.startY
+        )
+    const tap = {
+      x: event.clientX,
+      y: event.clientY,
+      time: event.timeStamp,
+    }
+    const previousTap = lastTapRef.current
+    const isDoubleTap =
+      tapDistance < DOUBLE_TAP_DISTANCE_PX &&
+      previousTap !== null &&
+      tap.time - previousTap.time <= DOUBLE_TAP_DELAY_MS &&
+      Math.hypot(tap.x - previousTap.x, tap.y - previousTap.y) <=
+        DOUBLE_TAP_DISTANCE_PX
+
+    if (zoomRef.current !== null) {
+      if (isDoubleTap) resetZoom()
+      else if (tapDistance < DOUBLE_TAP_DISTANCE_PX) lastTapRef.current = tap
+      return
+    }
+
     const activeMotion = motionRef.current
     if (activeMotion.axis === null || activeMotion.target === null) {
-      onTap?.()
+      if (isDoubleTap) enterZoom({ x: tap.x, y: tap.y })
+      else {
+        lastTapRef.current = tap
+        onTap?.()
+      }
       resetMotion()
       return
     }
@@ -317,11 +434,23 @@ const PresentSwipeTrack = ({
           transition,
         }}
       >
-        <PresentMedia
-          media={currentMedia}
-          imageLoaded={imageLoaded}
-          onViewingActive={onViewingActive}
-        />
+        <ZoomedMedia
+          data-testid={zoom !== null ? 'present-zoomed-media' : undefined}
+          style={
+            zoom !== null
+              ? {
+                  transform: `translate3d(${zoom.pan.x}px, ${zoom.pan.y}px, 0) scale(${ZOOM_SCALE})`,
+                  transformOrigin: `${zoom.origin.x}px ${zoom.origin.y}px`,
+                }
+              : undefined
+          }
+        >
+          <PresentMedia
+            media={currentMedia}
+            imageLoaded={imageLoaded}
+            onViewingActive={onViewingActive}
+          />
+        </ZoomedMedia>
       </MediaLayer>
     </SwipeTrack>
   )

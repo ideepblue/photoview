@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import styled, { createGlobalStyle } from 'styled-components'
 import PresentNavigationOverlay from './PresentNavigationOverlay'
 import PresentSwipeTrack from './PresentSwipeTrack'
@@ -49,15 +49,16 @@ const PresentView = ({
   reportedAlbums,
 }: PresentViewProps) => {
   const { updateSidebar } = useContext(SidebarContext)
+  const [zoomed, setZoomed] = useState(false)
 
   useEffect(() => {
     const keyDownEvent = (e: KeyboardEvent) => {
-      if (e.key == 'ArrowRight') {
+      if (e.key == 'ArrowRight' && !zoomed) {
         e.stopPropagation()
         dispatchMedia({ type: 'nextImage' })
       }
 
-      if (e.key == 'ArrowLeft') {
+      if (e.key == 'ArrowLeft' && !zoomed) {
         e.stopPropagation()
         dispatchMedia({ type: 'previousImage' })
       }
@@ -78,7 +79,7 @@ const PresentView = ({
     return function cleanup() {
       document.removeEventListener('keydown', keyDownEvent)
     }
-  })
+  }, [disableSaveCloseInHistory, dispatchMedia, zoomed])
 
   const currentMedia = media[activeIndex]
   if (currentMedia === undefined) return null
@@ -105,6 +106,7 @@ const PresentView = ({
         activeIndex={activeIndex}
         mediaCount={media.length}
         filename={currentMedia.title}
+        zoomed={zoomed}
         onShowInfo={() => {
           updateSidebar(<MediaSidebar media={currentMedia} hidePreview />)
         }}
@@ -118,6 +120,7 @@ const PresentView = ({
             onViewingActive={onViewingActive}
             onNavigate={type => dispatchMedia({ type })}
             onTap={showControls}
+            onZoomChange={setZoomed}
           />
         )}
       </PresentNavigationOverlay>
