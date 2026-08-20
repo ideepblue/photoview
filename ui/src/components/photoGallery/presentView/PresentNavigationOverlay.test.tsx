@@ -89,6 +89,28 @@ describe('PresentNavigationOverlay component', () => {
     expect(dispatchMedia).not.toHaveBeenCalled()
   })
 
+  test('keeps the action rail available but disables image navigation while zoomed', () => {
+    render(
+      <PresentNavigationOverlay
+        dispatchMedia={vi.fn()}
+        onShowInfo={vi.fn()}
+        zoomed
+      />
+    )
+
+    const previous = screen.getByLabelText('Previous image')
+    const next = screen.getByLabelText('Next image')
+    expect(previous).toHaveClass('hide')
+    expect(next).toHaveClass('hide')
+    expect(previous).toBeDisabled()
+    expect(next).toBeDisabled()
+    expect(screen.getByLabelText('Exit presentation mode')).toBeInTheDocument()
+    expect(screen.getByLabelText('Open photo details')).toBeInTheDocument()
+    expect(
+      screen.getByLabelText('Fullscreen display options')
+    ).toBeInTheDocument()
+  })
+
   test('renders customized fullscreen controls in Simplified Chinese', async () => {
     const instance = i18next.createInstance()
     await instance.init({
@@ -107,10 +129,18 @@ describe('PresentNavigationOverlay component', () => {
       </I18nextProvider>
     )
 
-    expect(screen.getByRole('button', { name: '上一张图片' })).toBeVisible()
-    expect(screen.getByRole('button', { name: '下一张图片' })).toBeVisible()
-    expect(screen.getByRole('button', { name: '退出全屏浏览' })).toBeVisible()
-    expect(screen.getByRole('button', { name: '打开照片详情' })).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: '上一张图片' })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '下一张图片' })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '退出全屏浏览' })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: '打开照片详情' })
+    ).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '全屏显示设置' }))
 

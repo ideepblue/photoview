@@ -87,6 +87,40 @@ test('keeps keyboard navigation and close actions', () => {
   expect(dispatchMedia).toHaveBeenLastCalledWith({ type: 'closePresentMode' })
 })
 
+test('locks keyboard image navigation while a photo is zoomed', () => {
+  const dispatchMedia = vi.fn()
+  render(
+    <PresentView
+      media={media}
+      activeIndex={1}
+      dispatchMedia={dispatchMedia}
+      disableSaveCloseInHistory
+    />
+  )
+
+  const track = screen.getByTestId('present-swipe-track')
+  for (const pointerId of [41, 42]) {
+    fireEvent.pointerDown(track, {
+      pointerId,
+      button: 0,
+      clientX: 200,
+      clientY: 400,
+    })
+    fireEvent.pointerUp(track, {
+      pointerId,
+      clientX: 200,
+      clientY: 400,
+    })
+  }
+
+  expect(screen.getByTestId('present-zoomed-media')).toBeInTheDocument()
+
+  fireEvent.keyDown(document, { key: 'ArrowRight' })
+  fireEvent.keyDown(document, { key: 'ArrowLeft' })
+
+  expect(dispatchMedia).not.toHaveBeenCalled()
+})
+
 test('passes the next item into the animated track before dispatching', () => {
   const dispatchMedia = vi.fn()
   render(

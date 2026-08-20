@@ -57,6 +57,7 @@ const customUiKeys = [
   'photos_page.open_details',
   'present_view.quality.high_res',
   'present_view.quality.thumbnail',
+  'present_view.quality.unavailable',
   'present_view.display_options.filename',
   'present_view.display_options.open',
   'present_view.display_options.position',
