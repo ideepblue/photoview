@@ -415,7 +415,7 @@ test('the zoom rail cycles the confirmed presets without re-enabling navigation'
   expect(onNavigate).not.toHaveBeenCalled()
 })
 
-test('dragging the zoom rail sets a continuous scale without cycling a preset', () => {
+test('dragging the lower-right zoom rail maps its full 1.1x–4x range and moves the scale indicator upward', () => {
   const { track } = renderTrack()
 
   tapAt(track, 1, 200, 400)
@@ -445,7 +445,11 @@ test('dragging the zoom rail sets a continuous scale without cycling a preset', 
   })
 
   expect(screen.getByTestId('present-zoomed-media')).toHaveStyle(
-    'transform: translate3d(0px, 0px, 0) scale(3.5)'
+    'transform: translate3d(0px, 0px, 0) scale(3.4)'
+  )
+  expect(screen.getByTestId('present-zoom-scale-value')).toHaveAttribute(
+    'data-zoom-progress',
+    '0.793'
   )
 })
 
