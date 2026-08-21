@@ -23,8 +23,8 @@ const REBOUND_DURATION_MS = 180
 const SETTLE_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)'
 const DEFAULT_ZOOM_SCALE = 2.5
 const ZOOM_PRESETS = [1.5, 2.5, 4]
-const MIN_ZOOM_SCALE = ZOOM_PRESETS[0]
-const MAX_ZOOM_SCALE = ZOOM_PRESETS[ZOOM_PRESETS.length - 1]
+const MIN_ZOOM_SCALE = 1.1
+const MAX_ZOOM_SCALE = 4
 const DOUBLE_TAP_DELAY_MS = 300
 const DOUBLE_TAP_DISTANCE_PX = 32
 const ZOOM_RAIL_HIDE_DELAY_MS = 2000
@@ -58,7 +58,7 @@ const ZoomedMedia = styled.div`
 const ZoomScaleRail = styled.div`
   position: absolute;
   z-index: 3;
-  top: 50%;
+  bottom: max(96px, calc(env(safe-area-inset-bottom) + 76px));
   right: max(16px, env(safe-area-inset-right));
   display: grid;
   width: 36px;
@@ -69,15 +69,16 @@ const ZoomScaleRail = styled.div`
   border-radius: 18px;
   background: rgba(20, 20, 24, 0.64);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-  transform: translateY(-50%);
   touch-action: none;
   backdrop-filter: blur(12px);
-  transition: opacity 180ms ease, transform 180ms ease;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
 
   &.hide {
     opacity: 0;
     pointer-events: none;
-    transform: translateY(-50%) scale(0.88);
+    transform: scale(0.88);
   }
 
   &::before {
@@ -98,6 +99,21 @@ const ZoomScaleValue = styled.span`
   color: white;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+  transform: translateY(-50%);
+  transition: top 90ms linear;
+`
+
+const ZoomScaleMarker = styled.span`
+  position: absolute;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  background: rgba(91, 224, 178, 0.88);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.75);
+  transform: translate(-50%, -50%);
+  transition: top 90ms linear;
 `
 
 type MotionState = {
@@ -161,6 +177,9 @@ const reduceMotion = () =>
 
 const transformValue = ({ x, y }: SwipePoint) =>
   `translate3d(${x}px, ${y}px, 0)`
+
+const zoomScaleProgress = (scale: number) =>
+  (scale - MIN_ZOOM_SCALE) / (MAX_ZOOM_SCALE - MIN_ZOOM_SCALE)
 
 const PresentSwipeTrack = ({
   currentMedia,
@@ -456,8 +475,8 @@ const PresentSwipeTrack = ({
     const duration = reduceMotion()
       ? 0
       : commit
-      ? COMMIT_DURATION_MS
-      : REBOUND_DURATION_MS
+        ? COMMIT_DURATION_MS
+        : REBOUND_DURATION_MS
 
     updateMotion({
       ...activeMotion,
@@ -514,8 +533,8 @@ const PresentSwipeTrack = ({
     motion.target === 'nextImage'
       ? nextMedia
       : motion.target === 'previousImage'
-      ? previousMedia
-      : null
+        ? previousMedia
+        : null
   const viewportSize =
     motion.axis === 'x' ? viewportRef.current.width : viewportRef.current.height
   const translations =
@@ -628,7 +647,17 @@ const PresentSwipeTrack = ({
             zoomRailPointerRef.current = null
           }}
         >
-          <ZoomScaleValue>{`${zoom.scale}×`}</ZoomScaleValue>
+          <ZoomScaleMarker
+            aria-hidden="true"
+            style={{ top: `${96 - zoomScaleProgress(zoom.scale) * 92}%` }}
+          />
+          <ZoomScaleValue
+            data-testid="present-zoom-scale-value"
+            data-zoom-progress={zoomScaleProgress(zoom.scale).toFixed(3)}
+            style={{ top: `${96 - zoomScaleProgress(zoom.scale) * 92}%` }}
+          >
+            {`${zoom.scale}×`}
+          </ZoomScaleValue>
         </ZoomScaleRail>
       )}
     </SwipeTrack>
