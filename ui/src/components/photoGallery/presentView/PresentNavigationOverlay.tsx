@@ -159,7 +159,12 @@ const NavigationButton = styled(OverlayButton)<{ align: 'left' | 'right' }>`
 `
 
 type PresentNavigationOverlayProps = {
-  children?: React.ReactNode | ((showControls: () => void) => React.ReactNode)
+  children?:
+    | React.ReactNode
+    | ((
+        showControls: () => void,
+        preferences: PresentViewPreferences
+      ) => React.ReactNode)
   dispatchMedia: React.Dispatch<GalleryAction>
   disableSaveCloseInHistory?: boolean
   activeIndex?: number
@@ -226,7 +231,9 @@ const PresentNavigationOverlay = ({
   }
 
   const childContent =
-    typeof children === 'function' ? children(showControls) : children
+    typeof children === 'function'
+      ? children(showControls, preferences)
+      : children
 
   return (
     <StyledOverlayContainer
@@ -366,6 +373,19 @@ const PresentNavigationOverlay = ({
               }
             />
             {t('present_view.display_options.filename', 'Show filename')}
+          </SettingsOption>
+          <SettingsOption>
+            <input
+              type="checkbox"
+              checked={preferences.loadHighRes}
+              onChange={event =>
+                updatePreference('loadHighRes', event.target.checked)
+              }
+            />
+            {t(
+              'present_view.display_options.high_res',
+              'Load high-resolution images'
+            )}
           </SettingsOption>
         </SettingsPopover>
       )}

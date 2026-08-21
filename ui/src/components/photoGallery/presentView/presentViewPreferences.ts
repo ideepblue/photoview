@@ -3,6 +3,7 @@ export const PRESENT_VIEW_PREFERENCES_KEY = 'photoview.present-view.preferences'
 export type PresentViewPreferences = {
   showPosition: boolean
   showFilename: boolean
+  loadHighRes: boolean
 }
 
 type PreferenceStorage = Pick<Storage, 'getItem' | 'setItem'>
@@ -10,6 +11,7 @@ type PreferenceStorage = Pick<Storage, 'getItem' | 'setItem'>
 const DEFAULT_PREFERENCES: PresentViewPreferences = {
   showPosition: true,
   showFilename: true,
+  loadHighRes: true,
 }
 
 const resolveStorage = (storage?: PreferenceStorage) => {
@@ -35,6 +37,10 @@ export const getPresentViewPreferences = (
     return {
       showPosition: parsed.showPosition,
       showFilename: parsed.showFilename,
+      loadHighRes:
+        typeof parsed.loadHighRes === 'boolean'
+          ? parsed.loadHighRes
+          : DEFAULT_PREFERENCES.loadHighRes,
     }
   } catch {
     return { ...DEFAULT_PREFERENCES }

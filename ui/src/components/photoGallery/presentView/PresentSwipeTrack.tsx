@@ -21,9 +21,13 @@ import {
 const COMMIT_DURATION_MS = 220
 const REBOUND_DURATION_MS = 180
 const SETTLE_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)'
-const ZOOM_SCALE = 2
+const DEFAULT_ZOOM_SCALE = 2.5
+const ZOOM_PRESETS = [1.5, 2.5, 4]
+const MIN_ZOOM_SCALE = ZOOM_PRESETS[0]
+const MAX_ZOOM_SCALE = ZOOM_PRESETS[ZOOM_PRESETS.length - 1]
 const DOUBLE_TAP_DELAY_MS = 300
 const DOUBLE_TAP_DISTANCE_PX = 32
+const ZOOM_RAIL_HIDE_DELAY_MS = 2000
 
 const SwipeTrack = styled.div`
   position: absolute;
@@ -51,6 +55,51 @@ const ZoomedMedia = styled.div`
   will-change: transform;
 `
 
+const ZoomScaleRail = styled.div`
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  right: max(16px, env(safe-area-inset-right));
+  display: grid;
+  width: 36px;
+  height: 160px;
+  padding: 12px 0;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 18px;
+  background: rgba(20, 20, 24, 0.64);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  transform: translateY(-50%);
+  touch-action: none;
+  backdrop-filter: blur(12px);
+  transition: opacity 180ms ease, transform 180ms ease;
+
+  &.hide {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-50%) scale(0.88);
+  }
+
+  &::before {
+    width: 2px;
+    height: 100%;
+    content: '';
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.38);
+  }
+`
+
+const ZoomScaleValue = styled.span`
+  position: absolute;
+  right: 44px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: rgba(20, 20, 24, 0.76);
+  color: white;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+`
+
 type MotionState = {
   axis: SwipeAxis | null
   offset: number
@@ -72,12 +121,19 @@ type PointerSession = {
 type ZoomState = {
   origin: SwipePoint
   pan: SwipePoint
+  scale: number
 }
 
 type Tap = {
   x: number
   y: number
   time: number
+}
+
+type ZoomRailPointer = {
+  id: number
+  startY: number
+  moved: boolean
 }
 
 type PresentSwipeTrackProps = {
@@ -89,6 +145,7 @@ type PresentSwipeTrackProps = {
   imageLoaded?(): void
   onViewingActive?(active: boolean): void
   onZoomChange?(zoomed: boolean): void
+  loadHighRes?: boolean
 }
 
 const idleMotion = (): MotionState => ({
@@ -114,6 +171,7 @@ const PresentSwipeTrack = ({
   imageLoaded,
   onViewingActive,
   onZoomChange,
+  loadHighRes = true,
 }: PresentSwipeTrackProps) => {
   const [motion, setMotion] = useState<MotionState>(idleMotion)
   const motionRef = useRef<MotionState>(motion)
@@ -123,6 +181,9 @@ const PresentSwipeTrack = ({
   const [zoom, setZoom] = useState<ZoomState | null>(null)
   const zoomRef = useRef<ZoomState | null>(null)
   const lastTapRef = useRef<Tap | null>(null)
+  const [showZoomRail, setShowZoomRail] = useState(false)
+  const zoomRailPointerRef = useRef<ZoomRailPointer | null>(null)
+  const zoomRailTimerRef = useRef<number | null>(null)
 
   const updateMotion = useCallback((nextMotion: MotionState) => {
     motionRef.current = nextMotion
@@ -142,22 +203,46 @@ const PresentSwipeTrack = ({
     updateMotion(idleMotion())
   }, [clearSettleTimer, updateMotion])
 
+  const clearZoomRailTimer = useCallback(() => {
+    if (zoomRailTimerRef.current !== null) {
+      window.clearTimeout(zoomRailTimerRef.current)
+      zoomRailTimerRef.current = null
+    }
+  }, [])
+
+  const revealZoomRail = useCallback(() => {
+    clearZoomRailTimer()
+    setShowZoomRail(true)
+    zoomRailTimerRef.current = window.setTimeout(() => {
+      zoomRailTimerRef.current = null
+      setShowZoomRail(false)
+    }, ZOOM_RAIL_HIDE_DELAY_MS)
+  }, [clearZoomRailTimer])
+
   const resetZoom = useCallback(() => {
+    clearZoomRailTimer()
     zoomRef.current = null
     lastTapRef.current = null
+    zoomRailPointerRef.current = null
+    setShowZoomRail(false)
     setZoom(null)
     onZoomChange?.(false)
-  }, [onZoomChange])
+  }, [clearZoomRailTimer, onZoomChange])
 
   const enterZoom = useCallback(
     (origin: SwipePoint) => {
-      const nextZoom = { origin, pan: { x: 0, y: 0 } }
+      const nextZoom = {
+        origin,
+        pan: { x: 0, y: 0 },
+        scale: DEFAULT_ZOOM_SCALE,
+      }
       zoomRef.current = nextZoom
       lastTapRef.current = null
       setZoom(nextZoom)
       onZoomChange?.(true)
+      revealZoomRail()
     },
-    [onZoomChange]
+    [onZoomChange, revealZoomRail]
   )
 
   const scheduleSettle = useCallback(
@@ -216,10 +301,12 @@ const PresentSwipeTrack = ({
   useEffect(
     () => () => {
       clearSettleTimer()
+      clearZoomRailTimer()
       pointerRef.current = null
       zoomRef.current = null
+      zoomRailPointerRef.current = null
     },
-    [clearSettleTimer]
+    [clearSettleTimer, clearZoomRailTimer]
   )
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -261,11 +348,11 @@ const PresentSwipeTrack = ({
       }
       const maxX = Math.max(
         0,
-        (viewportRef.current.width * (ZOOM_SCALE - 1)) / 2
+        (viewportRef.current.width * (activeZoom.scale - 1)) / 2
       )
       const maxY = Math.max(
         0,
-        (viewportRef.current.height * (ZOOM_SCALE - 1)) / 2
+        (viewportRef.current.height * (activeZoom.scale - 1)) / 2
       )
       const nextZoom = {
         ...activeZoom,
@@ -336,7 +423,11 @@ const PresentSwipeTrack = ({
 
     if (zoomRef.current !== null) {
       if (isDoubleTap) resetZoom()
-      else if (tapDistance < DOUBLE_TAP_DISTANCE_PX) lastTapRef.current = tap
+      else if (tapDistance < DOUBLE_TAP_DISTANCE_PX) {
+        lastTapRef.current = tap
+        revealZoomRail()
+        onTap?.()
+      }
       return
     }
 
@@ -383,6 +474,42 @@ const PresentSwipeTrack = ({
     rebound()
   }
 
+  const setZoomScale = (scale: number) => {
+    const activeZoom = zoomRef.current
+    if (activeZoom === null) return
+
+    const nextZoom = { ...activeZoom, scale }
+    zoomRef.current = nextZoom
+    setZoom(nextZoom)
+  }
+
+  const cycleZoomScale = () => {
+    const activeZoom = zoomRef.current
+    if (activeZoom === null) return
+
+    const currentPreset = ZOOM_PRESETS.indexOf(activeZoom.scale)
+    const nextScale =
+      ZOOM_PRESETS[(currentPreset + 1) % ZOOM_PRESETS.length] ??
+      DEFAULT_ZOOM_SCALE
+    setZoomScale(nextScale)
+  }
+
+  const setZoomScaleForRailPointer = (
+    event: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const range = Math.max(bounds.height, 1)
+    const progress = Math.max(
+      0,
+      Math.min(1, (bounds.top + bounds.height - event.clientY) / range)
+    )
+    const scale =
+      Math.round(
+        (MIN_ZOOM_SCALE + progress * (MAX_ZOOM_SCALE - MIN_ZOOM_SCALE)) * 10
+      ) / 10
+    setZoomScale(scale)
+  }
+
   const targetMedia =
     motion.target === 'nextImage'
       ? nextMedia
@@ -424,7 +551,7 @@ const PresentSwipeTrack = ({
             transition,
           }}
         >
-          <PresentMedia media={targetMedia} />
+          <PresentMedia media={targetMedia} loadHighRes={loadHighRes} />
         </MediaLayer>
       )}
       <MediaLayer
@@ -439,7 +566,7 @@ const PresentSwipeTrack = ({
           style={
             zoom !== null
               ? {
-                  transform: `translate3d(${zoom.pan.x}px, ${zoom.pan.y}px, 0) scale(${ZOOM_SCALE})`,
+                  transform: `translate3d(${zoom.pan.x}px, ${zoom.pan.y}px, 0) scale(${zoom.scale})`,
                   transformOrigin: `${zoom.origin.x}px ${zoom.origin.y}px`,
                 }
               : undefined
@@ -449,9 +576,61 @@ const PresentSwipeTrack = ({
             media={currentMedia}
             imageLoaded={imageLoaded}
             onViewingActive={onViewingActive}
+            loadHighRes={loadHighRes}
           />
         </ZoomedMedia>
       </MediaLayer>
+      {zoom !== null && (
+        <ZoomScaleRail
+          data-testid="present-zoom-scale-rail"
+          className={showZoomRail ? undefined : 'hide'}
+          onPointerDown={event => {
+            event.stopPropagation()
+            event.currentTarget.setPointerCapture?.(event.pointerId)
+            zoomRailPointerRef.current = {
+              id: event.pointerId,
+              startY: event.clientY,
+              moved: false,
+            }
+            revealZoomRail()
+          }}
+          onPointerMove={event => {
+            const pointer = zoomRailPointerRef.current
+            if (pointer === null || pointer.id !== event.pointerId) return
+
+            event.stopPropagation()
+            zoomRailPointerRef.current = {
+              ...pointer,
+              moved:
+                pointer.moved ||
+                Math.abs(event.clientY - pointer.startY) >
+                  DOUBLE_TAP_DISTANCE_PX,
+            }
+            setZoomScaleForRailPointer(event)
+            revealZoomRail()
+          }}
+          onPointerUp={event => {
+            const pointer = zoomRailPointerRef.current
+            if (pointer === null || pointer.id !== event.pointerId) return
+
+            event.stopPropagation()
+            event.currentTarget.releasePointerCapture?.(event.pointerId)
+            zoomRailPointerRef.current = null
+            if (pointer.moved) setZoomScaleForRailPointer(event)
+            else cycleZoomScale()
+            revealZoomRail()
+          }}
+          onPointerCancel={event => {
+            if (zoomRailPointerRef.current?.id !== event.pointerId) return
+
+            event.stopPropagation()
+            event.currentTarget.releasePointerCapture?.(event.pointerId)
+            zoomRailPointerRef.current = null
+          }}
+        >
+          <ZoomScaleValue>{`${zoom.scale}×`}</ZoomScaleValue>
+        </ZoomScaleRail>
+      )}
     </SwipeTrack>
   )
 }
