@@ -374,14 +374,14 @@ test('does not navigate past a non-circular boundary', () => {
   expect(onNavigate).not.toHaveBeenCalled()
 })
 
-test('double tap enters and exits the fixed 2.5x zoom mode', () => {
+test('double tap enters and exits the fixed 2x zoom mode', () => {
   const { track } = renderTrack()
 
   tapAt(track, 1, 200, 400)
   tapAt(track, 2, 200, 400)
 
   expect(screen.getByTestId('present-zoomed-media')).toHaveStyle(
-    'transform: translate3d(0px, 0px, 0) scale(2.5)'
+    'transform: translate3d(0px, 0px, 0) scale(2)'
   )
 
   tapAt(track, 3, 200, 400)
@@ -419,7 +419,7 @@ test('panning a zoomed photo does not navigate to another image', () => {
   })
 
   expect(screen.getByTestId('present-zoomed-media')).toHaveStyle(
-    'transform: translate3d(-160px, 0px, 0) scale(2.5)'
+    'transform: translate3d(-160px, 0px, 0) scale(2)'
   )
   expect(screen.queryByTestId('present-swipe-target')).not.toBeInTheDocument()
   expect(onNavigate).not.toHaveBeenCalled()
