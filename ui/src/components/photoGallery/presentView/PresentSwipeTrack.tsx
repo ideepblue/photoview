@@ -21,7 +21,7 @@ import {
 const COMMIT_DURATION_MS = 220
 const REBOUND_DURATION_MS = 180
 const SETTLE_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)'
-const ZOOM_SCALE = 2.5
+const ZOOM_SCALE = 2
 const DOUBLE_TAP_DELAY_MS = 300
 const DOUBLE_TAP_DISTANCE_PX = 32
 
