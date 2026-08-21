@@ -195,10 +195,14 @@
     "quality": {
       "high_res": "正在显示高清资源",
       "thumbnail": "正在显示缩略图",
-      "unavailable": "高清资源不可用"
+      "unavailable": "高清资源不可用",
+      "disabled": "已关闭高清图片加载",
+      "loading": "正在加载高清图片",
+      "loading_progress": "正在加载高清图片（{{progress}}%）"
     },
     "display_options": {
       "filename": "显示文件名",
+      "high_res": "加载高清图片",
       "open": "全屏显示设置",
       "position": "显示位置",
       "title": "全屏显示"

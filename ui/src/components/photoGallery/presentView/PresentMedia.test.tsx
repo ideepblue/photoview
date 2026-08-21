@@ -1,11 +1,35 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 import React from 'react'
 import { MediaType } from '../../../__generated__/globalTypes'
 import { MediaGalleryFields } from '../__generated__/MediaGalleryFields'
 import PresentMedia from './PresentMedia'
 
-test('render present image', () => {
+const successfulHighResResponse = () =>
+  new Response(new Uint8Array([1, 2, 3]), {
+    headers: {
+      'content-type': 'image/jpeg',
+      'content-length': '3',
+    },
+  })
+
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(successfulHighResResponse()))
+  Object.defineProperty(URL, 'createObjectURL', {
+    configurable: true,
+    value: vi.fn(() => 'blob:high-res-image'),
+  })
+  Object.defineProperty(URL, 'revokeObjectURL', {
+    configurable: true,
+    value: vi.fn(),
+  })
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+test('renders the streamed high-resolution image once its decoded', async () => {
   const onViewingActive = vi.fn()
   const media: MediaGalleryFields = {
     __typename: 'Media',
@@ -32,7 +56,7 @@ test('render present image', () => {
   render(<PresentMedia media={media} onViewingActive={onViewingActive} />)
 
   const thumbnail = screen.getByTestId('present-img-thumbnail')
-  const highRes = screen.getByTestId('present-img-highres')
+  const highRes = await screen.findByTestId('present-img-highres')
 
   expect(thumbnail).toHaveAttribute(
     'src',
@@ -44,9 +68,12 @@ test('render present image', () => {
     display: 'none',
   })
   expect(
-    screen.getByRole('status', { name: 'Thumbnail preview is displayed' })
+    screen.getByRole('status', {
+      name: 'High-resolution image loading (100%)',
+    })
   ).toHaveAttribute('data-quality', 'thumbnail')
 
+  fireEvent.load(thumbnail)
   fireEvent.load(highRes)
   expect(
     screen.getByRole('status', {
@@ -56,7 +83,7 @@ test('render present image', () => {
   expect(onViewingActive).toHaveBeenCalledWith(true)
 })
 
-test('marks a high-resolution image as unavailable after a load error', () => {
+test('marks a high-resolution image as unavailable after a failed request and retries on tap', async () => {
   const media: MediaGalleryFields = {
     __typename: 'Media',
     id: 'failed-highres',
@@ -79,15 +106,94 @@ test('marks a high-resolution image as unavailable after a load error', () => {
     },
   }
 
+  const fetchMock = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('network error'))
+    .mockResolvedValueOnce(successfulHighResResponse())
+  vi.stubGlobal('fetch', fetchMock)
+
   render(<PresentMedia media={media} />)
 
-  fireEvent.error(screen.getByTestId('present-img-highres'))
+  const unavailable = await screen.findByRole('status', {
+    name: 'High-resolution resource is unavailable',
+  })
 
+  expect(unavailable).toHaveAttribute('data-quality', 'unavailable')
+
+  fireEvent.click(unavailable)
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+  expect(await screen.findByTestId('present-img-highres')).toHaveAttribute(
+    'src',
+    'blob:high-res-image'
+  )
+})
+
+test('keeps the thumbnail and marks high-resolution loading as disabled by preference', () => {
+  const media: MediaGalleryFields = {
+    __typename: 'Media',
+    id: 'thumbnail-only',
+    title: 'thumbnail_only.jpg',
+    type: MediaType.Photo,
+    highRes: {
+      __typename: 'MediaURL',
+      url: '/thumbnail_only_highres.jpg',
+      width: 2400,
+      height: 1600,
+    },
+    blurhash: null,
+    videoWeb: null,
+    favorite: false,
+    thumbnail: {
+      __typename: 'MediaURL',
+      url: '/thumbnail_only.jpg',
+      width: 300,
+      height: 200,
+    },
+  }
+
+  render(<PresentMedia media={media} loadHighRes={false} />)
+
+  expect(screen.queryByTestId('present-img-highres')).not.toBeInTheDocument()
+  expect(fetch).not.toHaveBeenCalled()
   expect(
     screen.getByRole('status', {
-      name: 'High-resolution resource is unavailable',
+      name: 'High-resolution loading is disabled',
     })
-  ).toHaveAttribute('data-quality', 'unavailable')
+  ).toHaveAttribute('data-quality', 'high-res-disabled')
+})
+
+test('cancels an in-flight high-resolution request when the preference is switched off', () => {
+  const media: MediaGalleryFields = {
+    __typename: 'Media',
+    id: 'cancel-highres',
+    title: 'cancel_highres.jpg',
+    type: MediaType.Photo,
+    highRes: {
+      __typename: 'MediaURL',
+      url: '/cancel_highres.jpg',
+      width: 2400,
+      height: 1600,
+    },
+    blurhash: null,
+    videoWeb: null,
+    favorite: false,
+    thumbnail: {
+      __typename: 'MediaURL',
+      url: '/cancel_thumbnail.jpg',
+      width: 300,
+      height: 200,
+    },
+  }
+  const fetchMock = vi.fn(() => new Promise<Response>(() => undefined))
+  vi.stubGlobal('fetch', fetchMock)
+
+  const { rerender } = render(<PresentMedia media={media} />)
+  const signal = fetchMock.mock.calls[0][1].signal as AbortSignal
+
+  rerender(<PresentMedia media={media} loadHighRes={false} />)
+
+  expect(signal.aborted).toBe(true)
+  expect(fetchMock).toHaveBeenCalledTimes(1)
 })
 
 test('render present video', () => {

@@ -195,10 +195,14 @@
     "quality": {
       "high_res": "High-resolution resource is displayed",
       "thumbnail": "Thumbnail preview is displayed",
-      "unavailable": "High-resolution resource is unavailable"
+      "unavailable": "High-resolution resource is unavailable",
+      "disabled": "High-resolution loading is disabled",
+      "loading": "High-resolution image is loading",
+      "loading_progress": "High-resolution image loading ({{progress}}%)"
     },
     "display_options": {
       "filename": "Show filename",
+      "high_res": "Load high-resolution images",
       "open": "Fullscreen display options",
       "position": "Show position",
       "title": "Fullscreen display"

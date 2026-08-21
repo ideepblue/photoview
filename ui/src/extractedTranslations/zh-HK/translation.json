@@ -195,10 +195,14 @@
     "quality": {
       "high_res": "正在顯示高畫質資源",
       "thumbnail": "正在顯示縮圖",
-      "unavailable": "高畫質資源無法使用"
+      "unavailable": "高畫質資源無法使用",
+      "disabled": "已關閉高畫質相片載入",
+      "loading": "正在載入高畫質相片",
+      "loading_progress": "正在載入高畫質相片（{{progress}}%）"
     },
     "display_options": {
       "filename": "顯示檔案名稱",
+      "high_res": "載入高畫質相片",
       "open": "全螢幕顯示設定",
       "position": "顯示位置",
       "title": "全螢幕顯示"

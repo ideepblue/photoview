@@ -111,7 +111,7 @@ const PresentView = ({
           updateSidebar(<MediaSidebar media={currentMedia} hidePreview />)
         }}
       >
-        {showControls => (
+        {(showControls, preferences) => (
           <PresentSwipeTrack
             currentMedia={currentMedia}
             previousMedia={previousMedia}
@@ -121,6 +121,7 @@ const PresentView = ({
             onNavigate={type => dispatchMedia({ type })}
             onTap={showControls}
             onZoomChange={setZoomed}
+            loadHighRes={preferences.loadHighRes}
           />
         )}
       </PresentNavigationOverlay>

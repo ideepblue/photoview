@@ -3,8 +3,13 @@ import styled from 'styled-components'
 import { useTranslation } from 'react-i18next'
 import { MediaType } from '../../../__generated__/globalTypes'
 import { exhaustiveCheck } from '../../../helpers/utils'
-import { ProtectedImage, ProtectedVideo } from '../ProtectedMedia'
+import {
+  getProtectedUrl,
+  ProtectedImage,
+  ProtectedVideo,
+} from '../ProtectedMedia'
 import { MediaGalleryFields } from '../__generated__/MediaGalleryFields'
+import { fetchHighResBlob, HighResProgress } from './highResLoader'
 
 export type PresentMediaFields = Pick<
   MediaGalleryFields,
@@ -29,20 +34,39 @@ const StyledVideo = styled(ProtectedVideo)`
   height: 100vh;
 `
 
-const QualityIndicator = styled.span`
+const QualityIndicator = styled.button`
   position: absolute;
   z-index: 1;
   top: max(16px, env(safe-area-inset-top));
   left: max(16px, env(safe-area-inset-left));
   width: 10px;
   height: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   pointer-events: none;
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.9));
+
+  &[data-retry='true'] {
+    cursor: pointer;
+    pointer-events: auto;
+  }
 
   & svg {
     display: block;
     width: 100%;
     height: 100%;
+  }
+
+  @keyframes high-res-loading {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  & .high-res-indeterminate {
+    transform-origin: center;
+    animation: high-res-loading 900ms linear infinite;
   }
 `
 
@@ -50,35 +74,89 @@ type PresentMediaProps = {
   media: PresentMediaFields
   imageLoaded?(): void
   onViewingActive?(active: boolean): void
+  loadHighRes?: boolean
 }
 
-type HighResState = 'loading' | 'loaded' | 'unavailable'
+type HighResState = 'disabled' | 'loading' | 'loaded' | 'unavailable'
 
 const PresentMedia = ({
   media,
   imageLoaded,
   onViewingActive,
+  loadHighRes = true,
 }: PresentMediaProps) => {
   const { t } = useTranslation()
-  const [highResState, setHighResState] = useState<HighResState>(() =>
-    media.highRes?.url ? 'loading' : 'unavailable'
-  )
-  const reportedHighResRef = useRef(false)
+  const [highResState, setHighResState] = useState<HighResState>('loading')
+  const [highResProgress, setHighResProgress] = useState<HighResProgress>(null)
+  const [highResImageUrl, setHighResImageUrl] = useState<string | null>(null)
+  const [retryAttempt, setRetryAttempt] = useState(0)
+  const reportedViewingRef = useRef(false)
+  const objectUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
-    reportedHighResRef.current = false
-    setHighResState(media.highRes?.url ? 'loading' : 'unavailable')
-  }, [media.highRes?.url, media.id])
+    const releaseObjectUrl = () => {
+      if (objectUrlRef.current === null) return
+      URL.revokeObjectURL(objectUrlRef.current)
+      objectUrlRef.current = null
+    }
+    const highResUrl = loadHighRes
+      ? getProtectedUrl(media.highRes?.url)
+      : undefined
+
+    reportedViewingRef.current = false
+    releaseObjectUrl()
+    setHighResImageUrl(null)
+
+    if (highResUrl === undefined) {
+      setHighResState('disabled')
+      setHighResProgress(null)
+      return releaseObjectUrl
+    }
+
+    const controller = new AbortController()
+    let active = true
+    setHighResState('loading')
+    setHighResProgress(null)
+
+    fetchHighResBlob(highResUrl, controller.signal, progress => {
+      if (active) setHighResProgress(progress)
+    })
+      .then(blob => {
+        if (!active) return
+        const objectUrl = URL.createObjectURL(blob)
+        objectUrlRef.current = objectUrl
+        setHighResImageUrl(objectUrl)
+      })
+      .catch(error => {
+        if (
+          !active ||
+          (error instanceof Error && error.name === 'AbortError')
+        ) {
+          return
+        }
+        setHighResState('unavailable')
+      })
+
+    return () => {
+      active = false
+      controller.abort()
+      releaseObjectUrl()
+    }
+  }, [loadHighRes, media.highRes?.url, media.id, retryAttempt])
   useEffect(() => () => onViewingActive?.(false), [media.id, onViewingActive])
 
-  const reportHighResLoaded = useCallback(() => {
-    setHighResState('loaded')
-    if (reportedHighResRef.current) return
+  const reportImageVisible = useCallback(() => {
+    if (reportedViewingRef.current) return
 
-    reportedHighResRef.current = true
+    reportedViewingRef.current = true
     imageLoaded?.()
     onViewingActive?.(true)
   }, [imageLoaded, onViewingActive])
+
+  const retryHighRes = () => {
+    if (highResState !== 'unavailable') return
+    setRetryAttempt(attempt => attempt + 1)
+  }
 
   switch (media.type) {
     case MediaType.Photo:
@@ -89,29 +167,43 @@ const PresentMedia = ({
             src={media.thumbnail?.url}
             draggable={false}
             data-testid="present-img-thumbnail"
+            onLoad={reportImageVisible}
           />
-          <StyledPhoto
-            key={`${media.id}-highres`}
-            style={{ display: 'none' }}
-            src={media.highRes?.url}
-            draggable={false}
-            data-testid="present-img-highres"
-            onLoad={e => {
-              const elem = e.target as HTMLImageElement
-              elem.style.display = 'initial'
-              reportHighResLoaded()
-            }}
-            onError={() => setHighResState('unavailable')}
-          />
+          {highResImageUrl !== null && (
+            <StyledPhoto
+              key={`${media.id}-highres`}
+              style={{ display: 'none' }}
+              src={highResImageUrl}
+              draggable={false}
+              data-testid="present-img-highres"
+              onLoad={e => {
+                const elem = e.target as HTMLImageElement
+                elem.style.display = 'initial'
+                setHighResState('loaded')
+                reportImageVisible()
+              }}
+              onError={() => setHighResState('unavailable')}
+            />
+          )}
           <QualityIndicator
             role="status"
+            type="button"
             data-quality={
               highResState === 'loaded'
                 ? 'high-res'
                 : highResState === 'unavailable'
                 ? 'unavailable'
+                : highResState === 'disabled'
+                ? 'high-res-disabled'
                 : 'thumbnail'
             }
+            data-progress={
+              highResState === 'loading' && highResProgress !== null
+                ? Math.round(highResProgress * 100)
+                : undefined
+            }
+            data-retry={highResState === 'unavailable'}
+            onClick={retryHighRes}
             aria-label={
               highResState === 'loaded'
                 ? t(
@@ -123,9 +215,21 @@ const PresentMedia = ({
                     'present_view.quality.unavailable',
                     'High-resolution resource is unavailable'
                   )
+                : highResState === 'disabled'
+                ? t(
+                    'present_view.quality.disabled',
+                    'High-resolution loading is disabled'
+                  )
                 : t(
-                    'present_view.quality.thumbnail',
-                    'Thumbnail preview is displayed'
+                    highResProgress === null
+                      ? 'present_view.quality.loading'
+                      : 'present_view.quality.loading_progress',
+                    highResProgress === null
+                      ? 'High-resolution image is loading'
+                      : 'High-resolution image loading ({{progress}}%)',
+                    highResProgress === null
+                      ? undefined
+                      : { progress: Math.round(highResProgress * 100) }
                   )
             }
           >
@@ -154,12 +258,59 @@ const PresentMedia = ({
                     strokeLinecap="round"
                   />
                 </>
+              ) : highResState === 'disabled' ? (
+                <>
+                  <rect
+                    x="2"
+                    y="2"
+                    width="3"
+                    height="3"
+                    fill="rgba(187, 194, 215, 0.82)"
+                  />
+                  <rect
+                    x="7"
+                    y="2"
+                    width="3"
+                    height="3"
+                    fill="rgba(187, 194, 215, 0.5)"
+                  />
+                  <rect
+                    x="2"
+                    y="7"
+                    width="3"
+                    height="3"
+                    fill="rgba(187, 194, 215, 0.5)"
+                  />
+                  <rect
+                    x="7"
+                    y="7"
+                    width="3"
+                    height="3"
+                    fill="rgba(187, 194, 215, 0.82)"
+                  />
+                </>
+              ) : highResProgress === null ? (
+                <circle
+                  className="high-res-indeterminate"
+                  cx="6"
+                  cy="6"
+                  r="4"
+                  fill="none"
+                  stroke="rgba(187, 194, 215, 0.86)"
+                  strokeWidth="1.5"
+                  strokeDasharray="7 5"
+                />
               ) : (
-                <path
-                  d="M4 1h4v1h2v2h1v4h-1v2H8v1H4v-1H2V8H1V4h1V2h2Z"
-                  fill="rgba(224, 184, 96, 0.2)"
-                  stroke="rgba(241, 209, 137, 0.78)"
-                  strokeDasharray="1 1"
+                <circle
+                  cx="6"
+                  cy="6"
+                  r="4.5"
+                  fill="none"
+                  stroke="rgba(187, 194, 215, 0.86)"
+                  strokeWidth="1.5"
+                  strokeDasharray="28.3"
+                  strokeDashoffset={28.3 * (1 - highResProgress)}
+                  transform="rotate(-90 6 6)"
                 />
               )}
             </svg>

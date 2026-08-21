@@ -374,20 +374,79 @@ test('does not navigate past a non-circular boundary', () => {
   expect(onNavigate).not.toHaveBeenCalled()
 })
 
-test('double tap enters and exits the fixed 2x zoom mode', () => {
+test('double tap enters and exits the default 2.5x zoom mode', () => {
   const { track } = renderTrack()
 
   tapAt(track, 1, 200, 400)
   tapAt(track, 2, 200, 400)
 
   expect(screen.getByTestId('present-zoomed-media')).toHaveStyle(
-    'transform: translate3d(0px, 0px, 0) scale(2)'
+    'transform: translate3d(0px, 0px, 0) scale(2.5)'
   )
 
   tapAt(track, 3, 200, 400)
   tapAt(track, 4, 200, 400)
 
   expect(screen.queryByTestId('present-zoomed-media')).not.toBeInTheDocument()
+})
+
+test('the zoom rail cycles the confirmed presets without re-enabling navigation', () => {
+  const { onNavigate, track } = renderTrack()
+
+  tapAt(track, 1, 200, 400)
+  tapAt(track, 2, 200, 400)
+
+  const rail = screen.getByTestId('present-zoom-scale-rail')
+  fireEvent.pointerDown(rail, {
+    pointerId: 3,
+    button: 0,
+    clientX: 360,
+    clientY: 400,
+  })
+  fireEvent.pointerUp(rail, {
+    pointerId: 3,
+    clientX: 360,
+    clientY: 400,
+  })
+
+  expect(screen.getByTestId('present-zoomed-media')).toHaveStyle(
+    'transform: translate3d(0px, 0px, 0) scale(4)'
+  )
+  expect(onNavigate).not.toHaveBeenCalled()
+})
+
+test('dragging the zoom rail sets a continuous scale without cycling a preset', () => {
+  const { track } = renderTrack()
+
+  tapAt(track, 1, 200, 400)
+  tapAt(track, 2, 200, 400)
+
+  const rail = screen.getByTestId('present-zoom-scale-rail')
+  Object.defineProperty(rail, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => ({ top: 300, height: 160 }),
+  })
+
+  fireEvent.pointerDown(rail, {
+    pointerId: 3,
+    button: 0,
+    clientX: 360,
+    clientY: 420,
+  })
+  fireEvent.pointerMove(rail, {
+    pointerId: 3,
+    clientX: 360,
+    clientY: 332,
+  })
+  fireEvent.pointerUp(rail, {
+    pointerId: 3,
+    clientX: 360,
+    clientY: 332,
+  })
+
+  expect(screen.getByTestId('present-zoomed-media')).toHaveStyle(
+    'transform: translate3d(0px, 0px, 0) scale(3.5)'
+  )
 })
 
 test('panning a zoomed photo does not navigate to another image', () => {
@@ -419,7 +478,7 @@ test('panning a zoomed photo does not navigate to another image', () => {
   })
 
   expect(screen.getByTestId('present-zoomed-media')).toHaveStyle(
-    'transform: translate3d(-160px, 0px, 0) scale(2)'
+    'transform: translate3d(-160px, 0px, 0) scale(2.5)'
   )
   expect(screen.queryByTestId('present-swipe-target')).not.toBeInTheDocument()
   expect(onNavigate).not.toHaveBeenCalled()
