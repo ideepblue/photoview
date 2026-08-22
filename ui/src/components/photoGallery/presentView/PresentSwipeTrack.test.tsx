@@ -30,7 +30,7 @@ Object.defineProperty(document.defaultView!, 'PointerEvent', {
   value: TestPointerEvent,
 })
 
-const photo = (id: string): MediaGalleryFields => ({
+const photo = (id: string, width = 400, height = 800): MediaGalleryFields => ({
   __typename: 'Media',
   id,
   type: MediaType.Photo,
@@ -44,8 +44,8 @@ const photo = (id: string): MediaGalleryFields => ({
   thumbnail: {
     __typename: 'MediaURL',
     url: `/${id}-thumbnail.jpg`,
-    width: 400,
-    height: 800,
+    width,
+    height,
   },
 })
 
@@ -73,16 +73,18 @@ const setReducedMotion = (matches: boolean) => {
 }
 
 const renderTrack = ({
+  currentMedia = media.current,
   nextMedia = media.next,
   previousMedia = media.previous,
 }: {
+  currentMedia?: MediaGalleryFields
   nextMedia?: MediaGalleryFields | null
   previousMedia?: MediaGalleryFields | null
 } = {}) => {
   const onNavigate = vi.fn()
   render(
     <PresentSwipeTrack
-      currentMedia={media.current}
+      currentMedia={currentMedia}
       nextMedia={nextMedia}
       previousMedia={previousMedia}
       onNavigate={onNavigate}
@@ -374,14 +376,19 @@ test('does not navigate past a non-circular boundary', () => {
   expect(onNavigate).not.toHaveBeenCalled()
 })
 
-test('double tap enters and exits the default 2.5x zoom mode', () => {
-  const { track } = renderTrack()
+test('double tap enters fill mode at the tapped focus and exits it', () => {
+  const { track } = renderTrack({
+    currentMedia: photo('current', 1600, 900),
+  })
 
-  tapAt(track, 1, 200, 400)
-  tapAt(track, 2, 200, 400)
+  tapAt(track, 1, 100, 400)
+  tapAt(track, 2, 100, 400)
 
-  expect(screen.getByTestId('present-zoomed-media')).toHaveStyle(
-    'transform: translate3d(0px, 0px, 0) scale(2.5)'
+  const zoomedMedia = screen.getByTestId('present-zoomed-media')
+  expect(zoomedMedia).toHaveAttribute('data-zoom-mode', 'fill')
+  expect(zoomedMedia).toHaveAttribute('data-zoom-scale', '3.556')
+  expect(zoomedMedia).toHaveStyle(
+    'transform: translate3d(0px, 0px, 0) scale(3.5555555555555554)'
   )
 
   tapAt(track, 3, 200, 400)
@@ -390,11 +397,13 @@ test('double tap enters and exits the default 2.5x zoom mode', () => {
   expect(screen.queryByTestId('present-zoomed-media')).not.toBeInTheDocument()
 })
 
-test('the zoom rail cycles the confirmed presets without re-enabling navigation', () => {
-  const { onNavigate, track } = renderTrack()
+test('the zoom rail cycles fill and numeric presets without re-enabling navigation', () => {
+  const { onNavigate, track } = renderTrack({
+    currentMedia: photo('current', 1600, 900),
+  })
 
-  tapAt(track, 1, 200, 400)
-  tapAt(track, 2, 200, 400)
+  tapAt(track, 1, 100, 400)
+  tapAt(track, 2, 100, 400)
 
   const rail = screen.getByTestId('present-zoom-scale-rail')
   fireEvent.pointerDown(rail, {
@@ -409,17 +418,46 @@ test('the zoom rail cycles the confirmed presets without re-enabling navigation'
     clientY: 400,
   })
 
-  expect(screen.getByTestId('present-zoomed-media')).toHaveStyle(
-    'transform: translate3d(0px, 0px, 0) scale(4)'
+  expect(screen.getByTestId('present-zoom-scale-value')).toHaveTextContent(
+    '1.5×'
+  )
+  expect(screen.getByTestId('present-zoomed-media')).toHaveAttribute(
+    'data-zoom-mode',
+    'manual'
+  )
+
+  for (let pointerId = 4; pointerId <= 6; pointerId += 1) {
+    fireEvent.pointerDown(rail, {
+      pointerId,
+      button: 0,
+      clientX: 360,
+      clientY: 400,
+    })
+    fireEvent.pointerUp(rail, {
+      pointerId,
+      clientX: 360,
+      clientY: 400,
+    })
+  }
+
+  expect(screen.getByTestId('present-zoom-scale-value')).toHaveAttribute(
+    'data-zoom-semantic',
+    'fill'
+  )
+  expect(screen.getByTestId('present-zoomed-media')).toHaveAttribute(
+    'data-zoom-mode',
+    'fill'
   )
   expect(onNavigate).not.toHaveBeenCalled()
 })
 
 test('dragging the lower-right zoom rail maps its full 1.1x–4x range and moves the scale indicator upward', () => {
-  const { track } = renderTrack()
+  const { track } = renderTrack({
+    currentMedia: photo('current', 1600, 900),
+  })
 
-  tapAt(track, 1, 200, 400)
-  tapAt(track, 2, 200, 400)
+  tapAt(track, 1, 100, 400)
+  tapAt(track, 2, 100, 400)
 
   const rail = screen.getByTestId('present-zoom-scale-rail')
   Object.defineProperty(rail, 'getBoundingClientRect', {
@@ -445,7 +483,7 @@ test('dragging the lower-right zoom rail maps its full 1.1x–4x range and moves
   })
 
   expect(screen.getByTestId('present-zoomed-media')).toHaveStyle(
-    'transform: translate3d(0px, 0px, 0) scale(3.4)'
+    'transform: translate3d(100px, 0px, 0) scale(3.4)'
   )
   expect(screen.getByTestId('present-zoom-scale-value')).toHaveAttribute(
     'data-zoom-progress',
@@ -453,8 +491,71 @@ test('dragging the lower-right zoom rail maps its full 1.1x–4x range and moves
   )
 })
 
+test('fill mode can exceed 4x for an ultra-wide photo', () => {
+  const { track } = renderTrack({
+    currentMedia: photo('current', 2400, 800),
+  })
+
+  tapAt(track, 1, 160, 400)
+  tapAt(track, 2, 160, 400)
+
+  expect(screen.getByTestId('present-zoomed-media')).toHaveAttribute(
+    'data-zoom-mode',
+    'fill'
+  )
+  expect(screen.getByTestId('present-zoomed-media')).toHaveAttribute(
+    'data-zoom-scale',
+    '6.000'
+  )
+  expect(screen.getByTestId('present-zoom-scale-rail')).toHaveAttribute(
+    'data-zoom-max',
+    '6.000'
+  )
+})
+
+test('recomputes fill mode and the rail range after a viewport resize', () => {
+  const { track } = renderTrack({
+    currentMedia: photo('current', 1600, 900),
+  })
+
+  tapAt(track, 1, 100, 400)
+  tapAt(track, 2, 100, 400)
+
+  expect(screen.getByTestId('present-zoomed-media')).toHaveAttribute(
+    'data-zoom-scale',
+    '3.556'
+  )
+
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    value: 800,
+  })
+  Object.defineProperty(window, 'innerHeight', {
+    configurable: true,
+    value: 800,
+  })
+  act(() => {
+    window.dispatchEvent(new Event('resize'))
+  })
+
+  expect(screen.getByTestId('present-zoomed-media')).toHaveAttribute(
+    'data-zoom-mode',
+    'fill'
+  )
+  expect(screen.getByTestId('present-zoomed-media')).toHaveAttribute(
+    'data-zoom-scale',
+    '1.778'
+  )
+  expect(screen.getByTestId('present-zoom-scale-rail')).toHaveAttribute(
+    'data-zoom-max',
+    '4.000'
+  )
+})
+
 test('panning a zoomed photo does not navigate to another image', () => {
-  const { onNavigate, track } = renderTrack()
+  const { onNavigate, track } = renderTrack({
+    currentMedia: photo('current', 1600, 900),
+  })
 
   tapAt(track, 1, 200, 400)
   tapAt(track, 2, 200, 400)
@@ -482,7 +583,7 @@ test('panning a zoomed photo does not navigate to another image', () => {
   })
 
   expect(screen.getByTestId('present-zoomed-media')).toHaveStyle(
-    'transform: translate3d(-160px, 0px, 0) scale(2.5)'
+    'transform: translate3d(-160px, 0px, 0) scale(3.5555555555555554)'
   )
   expect(screen.queryByTestId('present-swipe-target')).not.toBeInTheDocument()
   expect(onNavigate).not.toHaveBeenCalled()

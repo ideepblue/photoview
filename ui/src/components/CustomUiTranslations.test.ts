@@ -71,6 +71,7 @@ const customUiKeys = [
   'present_view.navigation.exit',
   'present_view.navigation.next',
   'present_view.navigation.previous',
+  'present_view.zoom.fill',
   'pwa.pull_to_refresh.pull',
   'pwa.pull_to_refresh.refreshing',
   'pwa.pull_to_refresh.release',
