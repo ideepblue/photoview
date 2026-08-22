@@ -1,5 +1,5 @@
 import React, { useEffect, useContext } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import styled from 'styled-components'
 import { SidebarContext } from '../sidebar/Sidebar'
 import AlbumSidebar from '../sidebar/AlbumSidebar'
@@ -14,6 +14,10 @@ import { buttonStyles } from '../../primitives/form/Input'
 import { useTranslation } from 'react-i18next'
 import { useMobileAlbumContextBarHandedness } from './mobileAlbumContextBarPreferences'
 import AlbumFeaturedButton from './AlbumFeaturedButton'
+import {
+  getAlbumListReturnTarget,
+  withAlbumListRestoreIntent,
+} from '../albumGallery/albumListReturnContext'
 
 export const BreadcrumbList = styled.ol<{ hideLastArrow?: boolean }>`
   &
@@ -150,6 +154,7 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
     useLazyQuery<albumPathQuery>(ALBUM_PATH_QUERY)
   const { updateSidebar } = useContext(SidebarContext)
   const { t } = useTranslation()
+  const location = useLocation()
   const isAuthenticated = Boolean(authToken())
   const [handedness] = useMobileAlbumContextBarHandedness()
 
@@ -184,11 +189,16 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
 
   const path = pathData?.album.path || []
   const parent = path[0]
+  const restoreNavigationState = withAlbumListRestoreIntent(location.state)
+  const targetForParentList = (parentListKey: string, fallback: string) =>
+    getAlbumListReturnTarget(location.state, parentListKey)?.to || fallback
 
   let backNavigation: React.ReactNode = null
   if (isAuthenticated && disableLink) {
     if (pathData?.album) {
-      const backTarget = parent ? `/album/${parent.id}` : '/albums'
+      const backTarget = parent
+        ? targetForParentList(`/album/${parent.id}`, `/album/${parent.id}`)
+        : targetForParentList('/albums', '/albums')
       const backLabel = parent
         ? t('album_navigation.back_to_parent', 'Back to parent album')
         : t('album_navigation.back_to_albums', 'Back to albums')
@@ -196,6 +206,7 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
         <Link
           key="back"
           to={backTarget}
+          state={restoreNavigationState}
           aria-label={backLabel}
           title={backLabel}
           data-context-part="back"
@@ -222,11 +233,16 @@ const AlbumTitle = ({ album, disableLink = false }: AlbumTitleProps) => {
   const breadcrumbSections = path
     .slice()
     .reverse()
-    .map(x => (
-      <li key={x.id} className="inline-block hover:underline">
-        <Link to={`/album/${x.id}`}>{x.title}</Link>
-      </li>
-    ))
+    .map(x => {
+      const target = targetForParentList(`/album/${x.id}`, `/album/${x.id}`)
+      return (
+        <li key={x.id} className="inline-block hover:underline">
+          <Link to={target} state={restoreNavigationState}>
+            {x.title}
+          </Link>
+        </li>
+      )
+    })
 
   if (!disableLink) {
     title = <Link to={`/album/${album.id}`}>{title}</Link>

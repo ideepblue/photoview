@@ -51,6 +51,7 @@
     "back_to_albums": "Back to albums",
     "back_to_parent": "Back to parent album",
     "breadcrumb": "Album breadcrumb",
+    "last_opened": "Last opened",
     "handedness": {
       "description": "Choose which side keeps Back and Album options within thumb reach on phones.",
       "left": "Left hand",
@@ -58,7 +59,8 @@
       "right": "Right hand",
       "title": "One-handed album bar"
     },
-    "options": "Album options"
+    "options": "Album options",
+    "returned_to": "Returned to {{title}}"
   },
   "album_scan": {
     "action": "Scan and cache",
