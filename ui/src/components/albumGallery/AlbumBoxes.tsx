@@ -1,11 +1,22 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { AlbumBox, AlbumCardAlbum } from './AlbumBox'
 import {
   MobileAlbumLayout,
   readMobileAlbumLayout,
   writeMobileAlbumLayout,
 } from './mobileAlbumLayout'
+import {
+  albumListParentKey,
+  albumListPresentationKey,
+  getAlbumListReturnRecord,
+  hasAlbumListRestoreIntent,
+  mergeAlbumListReturnTarget,
+  saveAlbumListReturnRecord,
+  withAlbumListRestoreIntent,
+} from './albumListReturnContext'
+import { useAlbumListReturnRestore } from './useAlbumListReturnRestore'
 
 type AlbumBoxesProps = {
   error?: Error
@@ -72,12 +83,25 @@ const estimateAlbumCardHeight = (
 
 const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
   const { t } = useTranslation()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [layout, setLayout] = useState<MobileAlbumLayout>(() =>
     readMobileAlbumLayout()
   )
   const [mobileViewportWidth, setMobileViewportWidth] = useState(
     mobileAlbumViewportWidth
   )
+  const albumBoxesRef = useRef<HTMLDivElement>(null)
+  const parentListKey = albumListParentKey(location.pathname)
+  const [lastOpenedAlbumId, setLastOpenedAlbumId] = useState<string>()
+
+  useEffect(() => {
+    setLastOpenedAlbumId(
+      parentListKey
+        ? getAlbumListReturnRecord(parentListKey)?.albumId
+        : undefined
+    )
+  }, [parentListKey])
 
   useEffect(() => {
     const updateViewport = () =>
@@ -86,6 +110,64 @@ const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
     window.addEventListener('resize', updateViewport)
     return () => window.removeEventListener('resize', updateViewport)
   }, [])
+
+  const currentListTarget = `${location.pathname}${location.search}${location.hash}`
+  const presentationKey = parentListKey
+    ? albumListPresentationKey(parentListKey, location.search, layout)
+    : undefined
+  const navigationState = parentListKey
+    ? mergeAlbumListReturnTarget(location.state, {
+        parentListKey,
+        to: currentListTarget,
+      })
+    : undefined
+  const restoredAlbum = useAlbumListReturnRestore({
+    parentListKey,
+    presentationKey,
+    albumsReady: albums !== undefined,
+    shouldRestore: hasAlbumListRestoreIntent(location.state),
+    rootRef: albumBoxesRef,
+  })
+
+  const handleAlbumClick = (
+    album: AlbumCardAlbum,
+    event: React.MouseEvent<HTMLAnchorElement>
+  ) => {
+    if (
+      !parentListKey ||
+      !presentationKey ||
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.shiftKey
+    ) {
+      return
+    }
+
+    event.preventDefault()
+
+    const cardViewportOffset = event.currentTarget.getBoundingClientRect().top
+    saveAlbumListReturnRecord({
+      parentListKey,
+      presentationKey,
+      albumId: album.id,
+      albumTitle: album.title,
+      scrollY: Math.max(window.scrollY || window.pageYOffset || 0, 0),
+      cardViewportOffset,
+      updatedAt: Date.now(),
+    })
+    setLastOpenedAlbumId(album.id)
+
+    navigate(currentListTarget, {
+      replace: true,
+      state: withAlbumListRestoreIntent(location.state),
+    })
+    navigate(getCustomLink ? getCustomLink(album.id) : `/album/${album.id}`, {
+      state: navigationState,
+    })
+  }
 
   if (error) return <div>Error {error.message}</div>
 
@@ -103,6 +185,10 @@ const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
           album={album}
           layout={layout}
           customLink={getCustomLink ? getCustomLink(album.id) : undefined}
+          navigationState={navigationState}
+          onAlbumClick={handleAlbumClick}
+          isLastOpened={lastOpenedAlbumId === album.id}
+          wasRestored={restoredAlbum?.albumId === album.id}
         />
       ),
     }))
@@ -210,6 +296,7 @@ const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
         </div>
       </div>
       <div
+        ref={albumBoxesRef}
         data-testid="album-boxes"
         data-mobile-layout={layout}
         className={`${mobileAlbumLayoutClass[layout]} my-4 xs:my-6 xs:block xs:-mx-3`}
@@ -226,6 +313,13 @@ const AlbumBoxes = ({ error, albums, getCustomLink }: AlbumBoxesProps) => {
             ))
           : albumElements}
       </div>
+      <span className="sr-only" role="status" aria-live="polite">
+        {restoredAlbum
+          ? t('album_navigation.returned_to', 'Returned to {{title}}', {
+              title: restoredAlbum.albumTitle,
+            })
+          : ''}
+      </span>
     </>
   )
 }

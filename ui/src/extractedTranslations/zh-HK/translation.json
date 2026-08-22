@@ -51,6 +51,7 @@
     "back_to_albums": "返回相簿首頁",
     "back_to_parent": "返回上一層相簿",
     "breadcrumb": "相簿路徑",
+    "last_opened": "上次開啟",
     "handedness": {
       "description": "選擇在手機上將返回及相簿選項放在哪一側，方便拇指觸及。",
       "left": "左手",
@@ -58,7 +59,8 @@
       "right": "右手",
       "title": "單手操作版面"
     },
-    "options": "相簿選項"
+    "options": "相簿選項",
+    "returned_to": "已返回 {{title}}"
   },
   "album_scan": {
     "action": "掃描及補齊快取",

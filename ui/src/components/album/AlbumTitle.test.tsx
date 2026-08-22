@@ -1,13 +1,22 @@
 import { MockedProvider } from '@apollo/client/testing'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
-import { MemoryRouter } from 'react-router-dom'
+import {
+  MemoryRouter,
+  unstable_HistoryRouter as HistoryRouter,
+  useLocation,
+} from 'react-router-dom'
+import { createMemoryHistory } from 'history'
 import i18next from 'i18next'
 import { I18nextProvider } from 'react-i18next'
 import simplifiedChinese from '../../extractedTranslations/zh-CN/translation.json'
 import * as authentication from '../../helpers/authentication'
 import AlbumTitle, { ALBUM_PATH_QUERY } from './AlbumTitle'
 import { MOBILE_ALBUM_CONTEXT_BAR_HANDEDNESS_KEY } from './mobileAlbumContextBarPreferences'
+import {
+  hasAlbumListRestoreIntent,
+  mergeAlbumListReturnTarget,
+} from '../albumGallery/albumListReturnContext'
 
 vi.mock('../../helpers/authentication.ts')
 
@@ -17,6 +26,25 @@ beforeEach(() => {
   authToken.mockReset()
   window.localStorage.clear()
 })
+
+const LocationState = () => {
+  const location = useLocation()
+  return (
+    <output data-testid="album-title-location-state">
+      {JSON.stringify({
+        pathname: location.pathname,
+        search: location.search,
+        state: location.state,
+      })}
+    </output>
+  )
+}
+
+type AlbumTitleLocationState = {
+  pathname: string
+  search: string
+  state: unknown
+}
 
 test('allows the album header to grow when breadcrumb text wraps', () => {
   render(
@@ -173,6 +201,120 @@ test('links a root album back to the albums page', async () => {
   expect(screen.getAllByRole('link', { name: 'Back to albums' })).toHaveLength(
     1
   )
+})
+
+test('returns to the exact parent filter and requests a list restoration', async () => {
+  authToken.mockReturnValue('token-here')
+  const returnState = mergeAlbumListReturnTarget(undefined, {
+    parentListKey: '/album/2',
+    to: '/album/2?viewed=viewed&albumOrderBy=view_count',
+  })
+  const history = createMemoryHistory({
+    initialEntries: ['/album/3'],
+  })
+  history.replace('/album/3', returnState)
+
+  render(
+    <MockedProvider
+      addTypename={false}
+      mocks={[
+        {
+          request: {
+            query: ALBUM_PATH_QUERY,
+            variables: { id: '3' },
+          },
+          result: {
+            data: {
+              album: {
+                id: '3',
+                path: [{ id: '2', title: 'Immediate parent' }],
+              },
+            },
+          },
+        },
+      ]}
+    >
+      <HistoryRouter history={history}>
+        <AlbumTitle album={{ id: '3', title: 'Child' }} disableLink />
+        <LocationState />
+      </HistoryRouter>
+    </MockedProvider>
+  )
+
+  const backLink = await screen.findByRole('link', {
+    name: 'Back to parent album',
+  })
+  expect(backLink).toHaveAttribute(
+    'href',
+    '/album/2?viewed=viewed&albumOrderBy=view_count'
+  )
+
+  fireEvent.click(backLink)
+
+  await waitFor(() => {
+    const destination = JSON.parse(
+      screen.getByTestId('album-title-location-state').textContent || '{}'
+    ) as AlbumTitleLocationState
+    expect(destination).toMatchObject({
+      pathname: '/album/2',
+      search: '?viewed=viewed&albumOrderBy=view_count',
+    })
+    expect(hasAlbumListRestoreIntent(destination.state)).toBe(true)
+  })
+})
+
+test('preserves a stored root-list target through breadcrumb navigation', async () => {
+  authToken.mockReturnValue('token-here')
+  const rootState = mergeAlbumListReturnTarget(undefined, {
+    parentListKey: '/album/1',
+    to: '/album/1?albumOrderBy=title',
+  })
+  const returnState = mergeAlbumListReturnTarget(rootState, {
+    parentListKey: '/album/2',
+    to: '/album/2?viewed=viewed',
+  })
+  const history = createMemoryHistory({
+    initialEntries: ['/album/3'],
+  })
+  history.replace('/album/3', returnState)
+
+  render(
+    <MockedProvider
+      addTypename={false}
+      mocks={[
+        {
+          request: {
+            query: ALBUM_PATH_QUERY,
+            variables: { id: '3' },
+          },
+          result: {
+            data: {
+              album: {
+                id: '3',
+                path: [
+                  { id: '2', title: 'Immediate parent' },
+                  { id: '1', title: 'Root album' },
+                ],
+              },
+            },
+          },
+        },
+      ]}
+    >
+      <HistoryRouter history={history}>
+        <AlbumTitle album={{ id: '3', title: 'Child' }} disableLink />
+      </HistoryRouter>
+    </MockedProvider>
+  )
+
+  const rootLink = await screen.findByRole('link', { name: 'Root album' })
+  expect(rootLink).toHaveAttribute('href', '/album/1?albumOrderBy=title')
+
+  fireEvent.click(rootLink)
+
+  expect(history.location.pathname).toBe('/album/1')
+  expect(history.location.search).toBe('?albumOrderBy=title')
+  expect(hasAlbumListRestoreIntent(history.location.state)).toBe(true)
 })
 
 test('places personal curation with the mirrored mobile actions', async () => {
