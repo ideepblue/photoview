@@ -2,9 +2,12 @@ import React, {
   PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
+import { MediaType } from '../../../__generated__/globalTypes'
 import styled from 'styled-components'
 import PresentMedia, { PresentMediaFields } from './PresentMedia'
 import {
@@ -17,14 +20,24 @@ import {
   SwipeNavigation,
   SwipePoint,
 } from './swipeMotion'
+import {
+  clampPan,
+  clampPointToRect,
+  getContainedPhotoRect,
+  getFillScale,
+  getZoomRange,
+  initialPanForFocus,
+  ZoomRange,
+  ZoomRect,
+  ZoomSize,
+} from './zoomGeometry'
 
 const COMMIT_DURATION_MS = 220
 const REBOUND_DURATION_MS = 180
 const SETTLE_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)'
 const DEFAULT_ZOOM_SCALE = 2.5
-const ZOOM_PRESETS = [1.5, 2.5, 4]
-const MIN_ZOOM_SCALE = 1.1
-const MAX_ZOOM_SCALE = 4
+const ZOOM_PRESETS = [1.5, 2.5, 4] as const
+const FILL_SNAP_DISTANCE = 0.05
 const DOUBLE_TAP_DELAY_MS = 300
 const DOUBLE_TAP_DISTANCE_PX = 32
 const ZOOM_RAIL_HIDE_DELAY_MS = 2000
@@ -71,9 +84,7 @@ const ZoomScaleRail = styled.div`
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
   touch-action: none;
   backdrop-filter: blur(12px);
-  transition:
-    opacity 180ms ease,
-    transform 180ms ease;
+  transition: opacity 180ms ease, transform 180ms ease;
 
   &.hide {
     opacity: 0;
@@ -138,6 +149,10 @@ type ZoomState = {
   origin: SwipePoint
   pan: SwipePoint
   scale: number
+  mode: 'fill' | 'manual'
+  focus: SwipePoint
+  fillScale: number | null
+  range: ZoomRange
 }
 
 type Tap = {
@@ -151,6 +166,10 @@ type ZoomRailPointer = {
   startY: number
   moved: boolean
 }
+
+type ZoomChoice =
+  | { kind: 'fill' }
+  | { kind: 'scale'; value: typeof ZOOM_PRESETS[number] }
 
 type PresentSwipeTrackProps = {
   currentMedia: PresentMediaFields
@@ -175,11 +194,40 @@ const idleMotion = (): MotionState => ({
 const reduceMotion = () =>
   window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
 
+const readViewportSize = (): ZoomSize => ({
+  width: window.innerWidth,
+  height: window.innerHeight,
+})
+
+const getPhotoSize = (media: PresentMediaFields): ZoomSize | null =>
+  media.type === MediaType.Photo && media.thumbnail !== null
+    ? {
+        width: media.thumbnail.width,
+        height: media.thumbnail.height,
+      }
+    : null
+
+const normalizedFocusForPoint = (point: SwipePoint, rect: ZoomRect) => ({
+  x: (point.x - rect.x) / rect.width,
+  y: (point.y - rect.y) / rect.height,
+})
+
+const focusPointForNormalizedFocus = (
+  focus: SwipePoint,
+  rect: ZoomRect
+): SwipePoint => ({
+  x: rect.x + focus.x * rect.width,
+  y: rect.y + focus.y * rect.height,
+})
+
 const transformValue = ({ x, y }: SwipePoint) =>
   `translate3d(${x}px, ${y}px, 0)`
 
-const zoomScaleProgress = (scale: number) =>
-  (scale - MIN_ZOOM_SCALE) / (MAX_ZOOM_SCALE - MIN_ZOOM_SCALE)
+const zoomScaleProgress = (scale: number, range: ZoomRange) =>
+  Math.max(0, Math.min(1, (scale - range.min) / (range.max - range.min)))
+
+const clampScale = (scale: number, range: ZoomRange) =>
+  Math.max(range.min, Math.min(range.max, scale))
 
 const PresentSwipeTrack = ({
   currentMedia,
@@ -192,10 +240,13 @@ const PresentSwipeTrack = ({
   onZoomChange,
   loadHighRes = true,
 }: PresentSwipeTrackProps) => {
+  const { t } = useTranslation()
   const [motion, setMotion] = useState<MotionState>(idleMotion)
   const motionRef = useRef<MotionState>(motion)
   const pointerRef = useRef<PointerSession | null>(null)
-  const viewportRef = useRef({ width: 0, height: 0 })
+  const initialViewportSize = useMemo(readViewportSize, [])
+  const [viewportSize, setViewportSize] = useState(initialViewportSize)
+  const viewportRef = useRef(initialViewportSize)
   const settleTimerRef = useRef<number | null>(null)
   const [zoom, setZoom] = useState<ZoomState | null>(null)
   const zoomRef = useRef<ZoomState | null>(null)
@@ -203,6 +254,19 @@ const PresentSwipeTrack = ({
   const [showZoomRail, setShowZoomRail] = useState(false)
   const zoomRailPointerRef = useRef<ZoomRailPointer | null>(null)
   const zoomRailTimerRef = useRef<number | null>(null)
+  const photoSize = useMemo(() => getPhotoSize(currentMedia), [currentMedia])
+  const photoRect = useMemo(
+    () =>
+      photoSize === null
+        ? null
+        : getContainedPhotoRect(viewportSize, photoSize),
+    [photoSize, viewportSize]
+  )
+  const fillScale = useMemo(
+    () => (photoSize === null ? null : getFillScale(viewportSize, photoSize)),
+    [photoSize, viewportSize]
+  )
+  const zoomRange = useMemo(() => getZoomRange(fillScale), [fillScale])
 
   const updateMotion = useCallback((nextMotion: MotionState) => {
     motionRef.current = nextMotion
@@ -250,10 +314,29 @@ const PresentSwipeTrack = ({
 
   const enterZoom = useCallback(
     (origin: SwipePoint) => {
+      const focusOrigin =
+        photoRect === null ? origin : clampPointToRect(origin, photoRect)
+      const focus =
+        photoRect === null
+          ? { x: 0.5, y: 0.5 }
+          : normalizedFocusForPoint(focusOrigin, photoRect)
+      const nextScale = fillScale ?? DEFAULT_ZOOM_SCALE
       const nextZoom = {
-        origin,
-        pan: { x: 0, y: 0 },
-        scale: DEFAULT_ZOOM_SCALE,
+        origin: focusOrigin,
+        pan:
+          photoRect === null
+            ? { x: 0, y: 0 }
+            : initialPanForFocus({
+                viewport: viewportSize,
+                photoRect,
+                scale: nextScale,
+                origin: focusOrigin,
+              }),
+        scale: nextScale,
+        mode: fillScale === null ? 'manual' : 'fill',
+        focus,
+        fillScale,
+        range: zoomRange,
       }
       zoomRef.current = nextZoom
       lastTapRef.current = null
@@ -261,7 +344,14 @@ const PresentSwipeTrack = ({
       onZoomChange?.(true)
       revealZoomRail()
     },
-    [onZoomChange, revealZoomRail]
+    [
+      fillScale,
+      onZoomChange,
+      photoRect,
+      revealZoomRail,
+      viewportSize,
+      zoomRange,
+    ]
   )
 
   const scheduleSettle = useCallback(
@@ -317,6 +407,61 @@ const PresentSwipeTrack = ({
     resetZoom()
   }, [currentMedia.id, resetMotion, resetZoom])
 
+  useEffect(() => {
+    const handleResize = () => {
+      const nextViewport = readViewportSize()
+      const previousViewport = viewportRef.current
+      if (
+        nextViewport.width === previousViewport.width &&
+        nextViewport.height === previousViewport.height
+      ) {
+        return
+      }
+
+      viewportRef.current = nextViewport
+      setViewportSize(nextViewport)
+
+      const activeZoom = zoomRef.current
+      if (activeZoom === null || photoSize === null) return
+
+      const nextPhotoRect = getContainedPhotoRect(nextViewport, photoSize)
+      const nextFillScale = getFillScale(nextViewport, photoSize)
+      if (nextPhotoRect === null) return
+
+      const nextRange = getZoomRange(nextFillScale)
+      const nextOrigin = focusPointForNormalizedFocus(
+        activeZoom.focus,
+        nextPhotoRect
+      )
+      const nextScale =
+        activeZoom.mode === 'fill' && nextFillScale !== null
+          ? nextFillScale
+          : clampScale(activeZoom.scale, nextRange)
+      const nextZoom = {
+        ...activeZoom,
+        origin: nextOrigin,
+        pan: initialPanForFocus({
+          viewport: nextViewport,
+          photoRect: nextPhotoRect,
+          scale: nextScale,
+          origin: nextOrigin,
+          anchor: {
+            x: nextViewport.width / 2,
+            y: nextViewport.height / 2,
+          },
+        }),
+        scale: nextScale,
+        fillScale: nextFillScale,
+        range: nextRange,
+      }
+      zoomRef.current = nextZoom
+      setZoom(nextZoom)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [photoSize])
+
   useEffect(
     () => () => {
       clearSettleTimer()
@@ -347,10 +492,9 @@ const PresentSwipeTrack = ({
       startTime: event.timeStamp,
       moved: false,
     }
-    viewportRef.current = {
-      width: window.innerWidth,
-      height: window.innerHeight,
-    }
+    const nextViewport = readViewportSize()
+    viewportRef.current = nextViewport
+    setViewportSize(nextViewport)
 
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
@@ -365,20 +509,78 @@ const PresentSwipeTrack = ({
         x: event.clientX - pointer.currentX,
         y: event.clientY - pointer.currentY,
       }
-      const maxX = Math.max(
-        0,
-        (viewportRef.current.width * (activeZoom.scale - 1)) / 2
-      )
-      const maxY = Math.max(
-        0,
-        (viewportRef.current.height * (activeZoom.scale - 1)) / 2
-      )
+      const requestedPan = {
+        x: activeZoom.pan.x + delta.x,
+        y: activeZoom.pan.y + delta.y,
+      }
+      const activePhotoRect =
+        photoSize === null
+          ? null
+          : getContainedPhotoRect(viewportRef.current, photoSize)
+      const nextPan =
+        activePhotoRect === null
+          ? {
+              x: Math.max(
+                -Math.max(
+                  0,
+                  (viewportRef.current.width * (activeZoom.scale - 1)) / 2
+                ),
+                Math.min(
+                  Math.max(
+                    0,
+                    (viewportRef.current.width * (activeZoom.scale - 1)) / 2
+                  ),
+                  requestedPan.x
+                )
+              ),
+              y: Math.max(
+                -Math.max(
+                  0,
+                  (viewportRef.current.height * (activeZoom.scale - 1)) / 2
+                ),
+                Math.min(
+                  Math.max(
+                    0,
+                    (viewportRef.current.height * (activeZoom.scale - 1)) / 2
+                  ),
+                  requestedPan.y
+                )
+              ),
+            }
+          : clampPan({
+              viewport: viewportRef.current,
+              photoRect: activePhotoRect,
+              scale: activeZoom.scale,
+              origin: activeZoom.origin,
+              pan: requestedPan,
+            })
+      const nextFocus =
+        activePhotoRect === null
+          ? activeZoom.focus
+          : normalizedFocusForPoint(
+              clampPointToRect(
+                {
+                  x:
+                    activeZoom.origin.x +
+                    (viewportRef.current.width / 2 -
+                      nextPan.x -
+                      activeZoom.origin.x) /
+                      activeZoom.scale,
+                  y:
+                    activeZoom.origin.y +
+                    (viewportRef.current.height / 2 -
+                      nextPan.y -
+                      activeZoom.origin.y) /
+                      activeZoom.scale,
+                },
+                activePhotoRect
+              ),
+              activePhotoRect
+            )
       const nextZoom = {
         ...activeZoom,
-        pan: {
-          x: Math.max(-maxX, Math.min(maxX, activeZoom.pan.x + delta.x)),
-          y: Math.max(-maxY, Math.min(maxY, activeZoom.pan.y + delta.y)),
-        },
+        pan: nextPan,
+        focus: nextFocus,
       }
       zoomRef.current = nextZoom
       setZoom(nextZoom)
@@ -475,8 +677,8 @@ const PresentSwipeTrack = ({
     const duration = reduceMotion()
       ? 0
       : commit
-        ? COMMIT_DURATION_MS
-        : REBOUND_DURATION_MS
+      ? COMMIT_DURATION_MS
+      : REBOUND_DURATION_MS
 
     updateMotion({
       ...activeMotion,
@@ -493,11 +695,43 @@ const PresentSwipeTrack = ({
     rebound()
   }
 
-  const setZoomScale = (scale: number) => {
+  const setZoomScale = (scale: number, requestedMode?: 'fill' | 'manual') => {
     const activeZoom = zoomRef.current
     if (activeZoom === null) return
 
-    const nextZoom = { ...activeZoom, scale }
+    const isFillScale =
+      fillScale !== null && Math.abs(scale - fillScale) <= FILL_SNAP_DISTANCE
+    const mode = requestedMode ?? (isFillScale ? 'fill' : 'manual')
+    const nextScale =
+      mode === 'fill' && fillScale !== null
+        ? fillScale
+        : clampScale(scale, zoomRange)
+    const nextOrigin =
+      photoRect === null
+        ? activeZoom.origin
+        : focusPointForNormalizedFocus(activeZoom.focus, photoRect)
+    const nextPan =
+      photoRect === null
+        ? activeZoom.pan
+        : initialPanForFocus({
+            viewport: viewportSize,
+            photoRect,
+            scale: nextScale,
+            origin: nextOrigin,
+            anchor: {
+              x: viewportSize.width / 2,
+              y: viewportSize.height / 2,
+            },
+          })
+    const nextZoom = {
+      ...activeZoom,
+      origin: nextOrigin,
+      pan: nextPan,
+      scale: nextScale,
+      mode,
+      fillScale,
+      range: zoomRange,
+    }
     zoomRef.current = nextZoom
     setZoom(nextZoom)
   }
@@ -506,43 +740,69 @@ const PresentSwipeTrack = ({
     const activeZoom = zoomRef.current
     if (activeZoom === null) return
 
-    const currentPreset = ZOOM_PRESETS.indexOf(activeZoom.scale)
-    const nextScale =
-      ZOOM_PRESETS[(currentPreset + 1) % ZOOM_PRESETS.length] ??
-      DEFAULT_ZOOM_SCALE
-    setZoomScale(nextScale)
+    const choices: ZoomChoice[] = [
+      ...(fillScale === null ? [] : [{ kind: 'fill' as const }]),
+      ...ZOOM_PRESETS.filter(
+        preset =>
+          fillScale === null ||
+          Math.abs(preset - fillScale) > FILL_SNAP_DISTANCE
+      ).map(value => ({ kind: 'scale' as const, value })),
+    ]
+    if (choices.length === 0) return
+
+    const currentIndex =
+      activeZoom.mode === 'fill'
+        ? 0
+        : choices.findIndex(
+            choice =>
+              choice.kind === 'scale' &&
+              Math.abs(choice.value - activeZoom.scale) <= FILL_SNAP_DISTANCE
+          )
+    const nextChoice =
+      choices[(currentIndex + 1) % choices.length] ?? choices[0]
+    if (nextChoice.kind === 'fill') {
+      setZoomScale(fillScale ?? DEFAULT_ZOOM_SCALE, 'fill')
+    } else {
+      setZoomScale(nextChoice.value, 'manual')
+    }
   }
 
   const setZoomScaleForRailPointer = (
     event: ReactPointerEvent<HTMLDivElement>
   ) => {
     const bounds = event.currentTarget.getBoundingClientRect()
-    const range = Math.max(bounds.height, 1)
+    const railHeight = Math.max(bounds.height, 1)
     const progress = Math.max(
       0,
-      Math.min(1, (bounds.top + bounds.height - event.clientY) / range)
+      Math.min(1, (bounds.top + bounds.height - event.clientY) / railHeight)
     )
-    const scale =
+    const requestedScale =
       Math.round(
-        (MIN_ZOOM_SCALE + progress * (MAX_ZOOM_SCALE - MIN_ZOOM_SCALE)) * 10
+        (zoomRange.min + progress * (zoomRange.max - zoomRange.min)) * 10
       ) / 10
-    setZoomScale(scale)
+    const isFillScale =
+      fillScale !== null &&
+      Math.abs(requestedScale - fillScale) <= FILL_SNAP_DISTANCE
+    setZoomScale(
+      isFillScale ? fillScale : requestedScale,
+      isFillScale ? 'fill' : 'manual'
+    )
   }
 
   const targetMedia =
     motion.target === 'nextImage'
       ? nextMedia
       : motion.target === 'previousImage'
-        ? previousMedia
-        : null
-  const viewportSize =
+      ? previousMedia
+      : null
+  const navigationViewportSize =
     motion.axis === 'x' ? viewportRef.current.width : viewportRef.current.height
   const translations =
     motion.axis !== null && motion.target !== null
       ? getLayerTranslations(
           motion.axis,
           motion.offset,
-          viewportSize,
+          navigationViewportSize,
           motion.target
         )
       : {
@@ -582,6 +842,8 @@ const PresentSwipeTrack = ({
       >
         <ZoomedMedia
           data-testid={zoom !== null ? 'present-zoomed-media' : undefined}
+          data-zoom-mode={zoom?.mode}
+          data-zoom-scale={zoom?.scale.toFixed(3)}
           style={
             zoom !== null
               ? {
@@ -602,6 +864,8 @@ const PresentSwipeTrack = ({
       {zoom !== null && (
         <ZoomScaleRail
           data-testid="present-zoom-scale-rail"
+          data-zoom-min={zoom.range.min.toFixed(3)}
+          data-zoom-max={zoom.range.max.toFixed(3)}
           className={showZoomRail ? undefined : 'hide'}
           onPointerDown={event => {
             event.stopPropagation()
@@ -649,14 +913,24 @@ const PresentSwipeTrack = ({
         >
           <ZoomScaleMarker
             aria-hidden="true"
-            style={{ top: `${96 - zoomScaleProgress(zoom.scale) * 92}%` }}
+            style={{
+              top: `${96 - zoomScaleProgress(zoom.scale, zoom.range) * 92}%`,
+            }}
           />
           <ZoomScaleValue
             data-testid="present-zoom-scale-value"
-            data-zoom-progress={zoomScaleProgress(zoom.scale).toFixed(3)}
-            style={{ top: `${96 - zoomScaleProgress(zoom.scale) * 92}%` }}
+            data-zoom-progress={zoomScaleProgress(
+              zoom.scale,
+              zoom.range
+            ).toFixed(3)}
+            data-zoom-semantic={zoom.mode === 'fill' ? 'fill' : undefined}
+            style={{
+              top: `${96 - zoomScaleProgress(zoom.scale, zoom.range) * 92}%`,
+            }}
           >
-            {`${zoom.scale}×`}
+            {zoom.mode === 'fill'
+              ? t('present_view.zoom.fill', 'Fill screen')
+              : `${zoom.scale}×`}
           </ZoomScaleValue>
         </ZoomScaleRail>
       )}

@@ -213,6 +213,9 @@
       "exit": "Exit presentation mode",
       "next": "Next image",
       "previous": "Previous image"
+    },
+    "zoom": {
+      "fill": "Fill screen"
     }
   },
   "pwa": {
